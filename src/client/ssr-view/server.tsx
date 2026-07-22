@@ -176,16 +176,20 @@ export async function render(
   const showMediaOg = viewEnabled && (!!user.view.embed || !!user.view.embedMediaOnly);
   const pageUrl = `${host}${url.split('?')[0]}`;
 
-  const richMeta = [
-    showRichOg && user?.view?.embedTitle
-      ? `<meta property="og:title" content="${stripHtml(
+  const ogTitleContent = file.profileCaption
+    ? stripHtml(file.profileCaption)
+    : user?.view?.embedTitle
+      ? stripHtml(
           parseString(user.view.embedTitle, {
             file: file as unknown as File,
             user: user as User,
             ...metrics,
           }) ?? '',
-        )}" />`
-      : '',
+        )
+      : null;
+
+  const richMeta = [
+    showRichOg && ogTitleContent ? `<meta property="og:title" content="${ogTitleContent}" />` : '',
     showRichOg && user?.view?.embedDescription
       ? `<meta property="og:description" content="${stripHtml(
           parseString(user.view.embedDescription, {

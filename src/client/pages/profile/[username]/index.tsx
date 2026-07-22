@@ -30,6 +30,7 @@ import {
   IconMovie,
   IconPencil,
   IconSearch,
+  IconStarFilled,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -102,6 +103,7 @@ export default function ProfileUsername() {
   const [homeTagFilter, setHomeTagFilter] = useState<string | null>(null);
   const [clipsSort, setClipsSort] = useState<'newest' | 'views' | 'likes'>('newest');
   const [homePage, setHomePage] = useState(1);
+  const [favoritesPage, setFavoritesPage] = useState(1);
   const [lightbox, setLightbox] = useState<{ file: ProfileFile; list: ProfileFile[] } | null>(null);
 
   const files = data?.files ?? [];
@@ -128,6 +130,13 @@ export default function ProfileUsername() {
 
   const homePageCount = Math.ceil(homeFiles.length / HOME_PAGE_SIZE);
   const pagedHomeFiles = homeFiles.slice((homePage - 1) * HOME_PAGE_SIZE, homePage * HOME_PAGE_SIZE);
+
+  const favoriteFiles = files.filter((f) => f.favorite);
+  const favoritesPageCount = Math.ceil(favoriteFiles.length / HOME_PAGE_SIZE);
+  const pagedFavoriteFiles = favoriteFiles.slice(
+    (favoritesPage - 1) * HOME_PAGE_SIZE,
+    favoritesPage * HOME_PAGE_SIZE,
+  );
 
   const tags = useMemo(() => {
     const map = new Map<
@@ -199,6 +208,11 @@ export default function ProfileUsername() {
             <Tabs.Tab value='home' leftSection={<IconHome2 size='1rem' />}>
               Home
             </Tabs.Tab>
+            {favoriteFiles.length > 0 && (
+              <Tabs.Tab value='favorites' leftSection={<IconStarFilled size='1rem' />}>
+                Favorites
+              </Tabs.Tab>
+            )}
             <Tabs.Tab value='stats' leftSection={<IconChartBar size='1rem' />}>
               Stats
             </Tabs.Tab>
@@ -267,6 +281,29 @@ export default function ProfileUsername() {
               )}
             </Stack>
           </Tabs.Panel>
+
+          {favoriteFiles.length > 0 && (
+            <Tabs.Panel value='favorites'>
+              <Stack>
+                <ClipGrid
+                  files={pagedFavoriteFiles}
+                  navigationList={favoriteFiles}
+                  emptyText='No favorited clips yet.'
+                  onOpenClip={(file, list) => setLightbox({ file, list })}
+                />
+
+                {favoritesPageCount > 1 && (
+                  <Group justify='center'>
+                    <Pagination
+                      total={favoritesPageCount}
+                      value={favoritesPage}
+                      onChange={setFavoritesPage}
+                    />
+                  </Group>
+                )}
+              </Stack>
+            </Tabs.Panel>
+          )}
 
           <Tabs.Panel value='stats'>
             <SimpleGrid cols={{ base: 1, sm: 3 }} mt='sm'>
