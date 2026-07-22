@@ -113,15 +113,19 @@ export default function ProfileUsername() {
     if (file) setLightbox({ file, list: files });
   }, [data?.openClipId, files]);
 
-  const sortedFiles = useMemo(() => {
-    if (clipsSort === 'newest') return files;
+  const homeFilteredFiles = homeTagFilter
+    ? files.filter((f) => f.tags?.some((t) => t.name === homeTagFilter))
+    : files;
 
-    const sorted = [...files];
+  const homeFiles = useMemo(() => {
+    if (clipsSort === 'newest') return homeFilteredFiles;
+
+    const sorted = [...homeFilteredFiles];
     if (clipsSort === 'views') sorted.sort((a, b) => b.views - a.views);
     else sorted.sort((a, b) => b.likeCount - a.likeCount);
 
     return sorted;
-  }, [files, clipsSort]);
+  }, [homeFilteredFiles, clipsSort]);
 
   const tags = useMemo(() => {
     const map = new Map<
@@ -158,10 +162,6 @@ export default function ProfileUsername() {
   const { user } = data;
   const isOwner = self?.user?.username === user.username;
 
-  const recentFiles = files.slice(0, 8);
-  const homeFiles = homeTagFilter
-    ? files.filter((f) => f.tags?.some((t) => t.name === homeTagFilter))
-    : recentFiles;
   const totalViews = files.reduce((sum, f) => sum + f.views, 0);
   const totalLikes = files.reduce((sum, f) => sum + f.likeCount, 0);
 
@@ -197,9 +197,6 @@ export default function ProfileUsername() {
             <Tabs.Tab value='home' leftSection={<IconHome2 size='1rem' />}>
               Home
             </Tabs.Tab>
-            <Tabs.Tab value='clips' leftSection={<IconMovie size='1rem' />}>
-              Clips
-            </Tabs.Tab>
             <Tabs.Tab value='stats' leftSection={<IconChartBar size='1rem' />}>
               Stats
             </Tabs.Tab>
@@ -207,42 +204,32 @@ export default function ProfileUsername() {
 
           <Tabs.Panel value='home'>
             <Stack>
-              {tags.length > 0 && (
-                <Select
-                  placeholder='Search by game/category...'
-                  leftSection={<IconSearch size='1rem' />}
-                  searchable
-                  clearable
-                  value={homeTagFilter}
-                  onChange={setHomeTagFilter}
-                  data={tags.map((tag) => ({ value: tag.name, label: tag.name }))}
-                  renderOption={({ option }) => {
-                    const tag = tags.find((t) => t.name === option.value);
-                    return (
-                      <Group gap='xs' wrap='nowrap'>
-                        {tag?.icon && <Avatar src={`/api/tags/${tag.id}/icon`} size={18} radius='sm' />}
-                        <Text size='sm'>{option.label}</Text>
-                      </Group>
-                    );
-                  }}
-                  maw={320}
-                />
-              )}
-              <ClipGrid
-                files={homeFiles}
-                emptyText={
-                  homeTagFilter ? `No clips tagged "${homeTagFilter}".` : 'No clips have been shared yet.'
-                }
-                username={user.username}
-                onOpenClip={(file, list) => setLightbox({ file, list })}
-              />
-            </Stack>
-          </Tabs.Panel>
+              <Group justify='space-between' wrap='wrap'>
+                {tags.length > 0 ? (
+                  <Select
+                    placeholder='Search by game/category...'
+                    leftSection={<IconSearch size='1rem' />}
+                    searchable
+                    clearable
+                    value={homeTagFilter}
+                    onChange={setHomeTagFilter}
+                    data={tags.map((tag) => ({ value: tag.name, label: tag.name }))}
+                    renderOption={({ option }) => {
+                      const tag = tags.find((t) => t.name === option.value);
+                      return (
+                        <Group gap='xs' wrap='nowrap'>
+                          {tag?.icon && <Avatar src={`/api/tags/${tag.id}/icon`} size={18} radius='sm' />}
+                          <Text size='sm'>{option.label}</Text>
+                        </Group>
+                      );
+                    }}
+                    maw={320}
+                  />
+                ) : (
+                  <div />
+                )}
 
-          <Tabs.Panel value='clips'>
-            <Stack>
-              {files.length > 0 && (
-                <Group justify='flex-end'>
+                {files.length > 0 && (
                   <SegmentedControl
                     size='xs'
                     value={clipsSort}
@@ -253,11 +240,14 @@ export default function ProfileUsername() {
                       { label: 'Most Likes', value: 'likes' },
                     ]}
                   />
-                </Group>
-              )}
+                )}
+              </Group>
+
               <ClipGrid
-                files={sortedFiles}
-                emptyText='No clips have been shared yet.'
+                files={homeFiles}
+                emptyText={
+                  homeTagFilter ? `No clips tagged "${homeTagFilter}".` : 'No clips have been shared yet.'
+                }
                 username={user.username}
                 onOpenClip={(file, list) => setLightbox({ file, list })}
               />
