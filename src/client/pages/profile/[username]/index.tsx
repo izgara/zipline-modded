@@ -1,4 +1,3 @@
-import TagPill from '@/components/pages/files/tags/TagPill';
 import { useSsrData } from '@/components/ZiplineSSRProvider';
 import { Response } from '@/lib/api/response';
 import { useTitle } from '@/lib/client/hooks/useTitle';
@@ -30,7 +29,6 @@ import {
   IconMovie,
   IconPencil,
   IconSearch,
-  IconTags,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -103,7 +101,6 @@ function ClipGrid({
 export default function ProfileUsername() {
   const data = useSsrData<SsrData>();
   const { data: self } = useSWR<Response['/api/user']>('/api/user');
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [homeTagFilter, setHomeTagFilter] = useState<string | null>(null);
   const [clipsSort, setClipsSort] = useState<'newest' | 'views' | 'likes'>('newest');
   const [lightbox, setLightbox] = useState<{ file: ProfileFile; list: ProfileFile[] } | null>(null);
@@ -165,7 +162,6 @@ export default function ProfileUsername() {
   const homeFiles = homeTagFilter
     ? files.filter((f) => f.tags?.some((t) => t.name === homeTagFilter))
     : recentFiles;
-  const taggedFiles = selectedTag ? files.filter((f) => f.tags?.some((t) => t.name === selectedTag)) : files;
   const totalViews = files.reduce((sum, f) => sum + f.views, 0);
   const totalLikes = files.reduce((sum, f) => sum + f.likeCount, 0);
 
@@ -203,9 +199,6 @@ export default function ProfileUsername() {
             </Tabs.Tab>
             <Tabs.Tab value='clips' leftSection={<IconMovie size='1rem' />}>
               Clips
-            </Tabs.Tab>
-            <Tabs.Tab value='tagged' leftSection={<IconTags size='1rem' />}>
-              Categories
             </Tabs.Tab>
             <Tabs.Tab value='stats' leftSection={<IconChartBar size='1rem' />}>
               Stats
@@ -265,35 +258,6 @@ export default function ProfileUsername() {
               <ClipGrid
                 files={sortedFiles}
                 emptyText='No clips have been shared yet.'
-                username={user.username}
-                onOpenClip={(file, list) => setLightbox({ file, list })}
-              />
-            </Stack>
-          </Tabs.Panel>
-
-          <Tabs.Panel value='tagged'>
-            <Stack>
-              {tags.length === 0 ? (
-                <Text c='dimmed'>No tagged clips yet.</Text>
-              ) : (
-                <Group>
-                  {tags.map((tag) => (
-                    <TagPill
-                      key={tag.name}
-                      tag={tag}
-                      onClick={() => setSelectedTag(selectedTag === tag.name ? null : tag.name)}
-                      style={{
-                        cursor: 'pointer',
-                        outline:
-                          selectedTag === tag.name ? '2px solid var(--mantine-color-blue-5)' : undefined,
-                      }}
-                    />
-                  ))}
-                </Group>
-              )}
-              <ClipGrid
-                files={taggedFiles}
-                emptyText={selectedTag ? `No clips tagged "${selectedTag}".` : 'Pick a tag above to browse.'}
                 username={user.username}
                 onOpenClip={(file, list) => setLightbox({ file, list })}
               />

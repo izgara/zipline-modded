@@ -54,6 +54,18 @@ function FullscreenSizedMedia({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Absolute-fill within a relatively-positioned flex item - unlike percentage
+// heights through nested flex containers (which silently fail to resolve in
+// some ancestor chains), inset: 0 on an absolutely positioned element always
+// sizes it to the containing block's box, regardless of parent flex quirks.
+function FullscreenVideoContainer({ children }: { children: React.ReactNode }) {
+  return (
+    <Box style={{ position: 'relative', flex: 1, alignSelf: 'stretch', minHeight: 0, width: '100%' }}>
+      {children}
+    </Box>
+  );
+}
+
 export default function DashboardFileType({
   file,
   show,
@@ -153,13 +165,13 @@ export default function DashboardFileType({
           cursor: 'pointer',
           objectFit: 'contain',
           ...(fullscreen
-            ? { maxWidth: '100%', maxHeight: '100%', width: '100%', height: '100%' }
+            ? { position: 'absolute', inset: 0, width: '100%', height: '100%' }
             : { maxWidth: '85vw', maxHeight: '85vh', width: '100%' }),
         }}
       />
     );
 
-    return fullscreen ? <FullscreenSizedMedia>{video}</FullscreenSizedMedia> : video;
+    return fullscreen ? <FullscreenVideoContainer>{video}</FullscreenVideoContainer> : video;
   }
 
   if (type === 'image') {
