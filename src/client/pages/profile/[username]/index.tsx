@@ -134,6 +134,7 @@ export default function ProfileUsername() {
             <Button
               component={Link}
               to='/dashboard/settings'
+              reloadDocument
               variant='outline'
               leftSection={<IconPencil size='1rem' />}
             >
