@@ -1,3 +1,4 @@
+import { Response } from '@/lib/api/response';
 import { File } from '@/lib/db/models/file';
 import { fetchApi } from '@/lib/fetchApi';
 import useObjectState from '@/lib/client/hooks/useObjectState';
@@ -15,6 +16,7 @@ import {
 import { showNotification } from '@mantine/notifications';
 import { IconEye, IconKey, IconPencil, IconPencilOff, IconTrashFilled } from '@tabler/icons-react';
 import { useEffect } from 'react';
+import useSWR from 'swr';
 import { mutateFiles } from '../actions';
 
 export default function EditFileDetailsModal({
@@ -26,6 +28,8 @@ export default function EditFileDetailsModal({
   file: File | null;
   onClose: () => void;
 }) {
+  const { data: knownMentions } = useSWR<Response['/api/user/mentions']>('/api/user/mentions');
+
   const [formData, setFormData] = useObjectState<{
     name: string;
     maxViews: number | null;
@@ -189,8 +193,9 @@ export default function EditFileDetailsModal({
         <TagsInput
           label='Mentions'
           description='Tag other people who appear in this clip. People can search your profile by these names.'
-          placeholder='Type a name and press Enter...'
+          placeholder='Search or type a name and press Enter...'
           maxTags={10}
+          data={knownMentions ?? []}
           value={formData.mentions}
           onChange={(value) => setFormData('mentions', value)}
         />

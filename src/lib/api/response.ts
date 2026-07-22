@@ -34,6 +34,7 @@ import { ApiUserFilesIncompleteResponse } from '@/server/routes/api/user/files/i
 import { ApiUserFilesTransactionResponse } from '@/server/routes/api/user/files/transaction';
 import { ApiUserFoldersResponse } from '@/server/routes/api/user/folders';
 import { ApiUserFoldersIdResponse } from '@/server/routes/api/user/folders/[id]';
+import { ApiUserMentionsResponse } from '@/server/routes/api/user/mentions';
 import { ApiUserMfaPasskeyResponse } from '@/server/routes/api/user/mfa/passkey';
 import { ApiUserMfaTotpResponse } from '@/server/routes/api/user/mfa/totp';
 import { ApiUserRecentResponse } from '@/server/routes/api/user/recent';
@@ -72,6 +73,7 @@ export type Response = {
   '/api/user/urls': ApiUserUrlsResponse;
   '/api/user/tags/[id]': ApiUserTagsIdResponse;
   '/api/user/tags': ApiUserTagsResponse;
+  '/api/user/mentions': ApiUserMentionsResponse;
   '/api/user/sessions': ApiUserSessionsResponse;
   '/api/user': ApiUserResponse;
   '/api/user/stats': ApiUserStatsResponse;

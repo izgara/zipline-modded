@@ -19,7 +19,6 @@ import {
   Stack,
   Tabs,
   Text,
-  TextInput,
   Title,
   useMantineTheme,
 } from '@mantine/core';
@@ -103,7 +102,7 @@ export default function ProfileUsername() {
   const data = useSsrData<SsrData>();
   const { data: self } = useSWR<Response['/api/user']>('/api/user');
   const [homeTagFilter, setHomeTagFilter] = useState<string | null>(null);
-  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionFilter, setMentionFilter] = useState<string | null>(null);
   const [clipsSort, setClipsSort] = useState<'newest' | 'views' | 'likes'>('newest');
   const [homePage, setHomePage] = useState(1);
   const [favoritesPage, setFavoritesPage] = useState(1);
@@ -117,13 +116,9 @@ export default function ProfileUsername() {
     if (file) setLightbox({ file, list: files });
   }, [data?.openClipId, files]);
 
-  const trimmedMentionQuery = mentionQuery.trim().toLowerCase();
-
   const homeFilteredFiles = files
     .filter((f) => (homeTagFilter ? f.tags?.some((t) => t.name === homeTagFilter) : true))
-    .filter((f) =>
-      trimmedMentionQuery ? f.mentions?.some((m) => m.toLowerCase().includes(trimmedMentionQuery)) : true,
-    );
+    .filter((f) => (mentionFilter ? f.mentions?.includes(mentionFilter) : true));
 
   const homeFiles = useMemo(() => {
     if (clipsSort === 'newest') return homeFilteredFiles;
@@ -156,6 +151,14 @@ export default function ProfileUsername() {
       }
     }
     return Array.from(map.values());
+  }, [files]);
+
+  const mentionedPeople = useMemo(() => {
+    const set = new Set<string>();
+    for (const file of files) {
+      for (const mention of file.mentions ?? []) set.add(mention);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [files]);
 
   const viewsByTag = useMemo(() => {
@@ -254,15 +257,18 @@ export default function ProfileUsername() {
                     />
                   )}
 
-                  {files.length > 0 && (
-                    <TextInput
+                  {mentionedPeople.length > 0 && (
+                    <Select
                       placeholder='Search by mentioned person...'
                       leftSection={<IconUserSearch size='1rem' />}
-                      value={mentionQuery}
-                      onChange={(event) => {
-                        setMentionQuery(event.currentTarget.value);
+                      searchable
+                      clearable
+                      value={mentionFilter}
+                      onChange={(value) => {
+                        setMentionFilter(value);
                         setHomePage(1);
                       }}
+                      data={mentionedPeople}
                       maw={280}
                     />
                   )}
@@ -289,8 +295,8 @@ export default function ProfileUsername() {
                 files={pagedHomeFiles}
                 navigationList={homeFiles}
                 emptyText={
-                  trimmedMentionQuery
-                    ? `No clips mentioning "${mentionQuery.trim()}".`
+                  mentionFilter
+                    ? `No clips mentioning "${mentionFilter}".`
                     : homeTagFilter
                       ? `No clips tagged "${homeTagFilter}".`
                       : 'No clips have been shared yet.'
