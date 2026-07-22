@@ -1,4 +1,6 @@
+import { ApiFilesIdCommentsResponse } from '@/server/routes/api/files/[id]/comments';
 import { ApiFilesIdLikeResponse } from '@/server/routes/api/files/[id]/like';
+import { ApiUserFilesIdCommentsIdResponse } from '@/server/routes/api/user/files/[id]/comments/[commentId]';
 import { ApiAuthInvitesResponse } from '@/server/routes/api/auth/invites';
 import { ApiAuthInvitesIdResponse } from '@/server/routes/api/auth/invites/[id]';
 import { ApiAuthInvitesWebResponse } from '@/server/routes/api/auth/invites/web';
@@ -98,4 +100,6 @@ export type Response = {
   '/api/version': ApiVersionResponse;
   '/api/stats': ApiStatsResponse;
   '/api/files/[id]/like': ApiFilesIdLikeResponse;
+  '/api/files/[id]/comments': ApiFilesIdCommentsResponse;
+  '/api/user/files/[id]/comments/[commentId]': ApiUserFilesIdCommentsIdResponse;
 };

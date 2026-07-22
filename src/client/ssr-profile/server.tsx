@@ -14,6 +14,7 @@ import { createZiplineSsr } from '@/lib/ssr/createZiplineSsr';
 import { stripHtml } from '@/lib/stripHtml';
 import type { ZiplineTheme } from '@/lib/theme';
 import { readThemes } from '@/lib/theme/file';
+import { readVisitorId } from '@/lib/visitor';
 import { FastifyRequest } from 'fastify';
 import { renderToString } from 'react-dom/server';
 import { createStaticHandler, createStaticRouter, StaticRouterProvider } from 'react-router-dom';
@@ -26,7 +27,7 @@ export async function render(
   }: {
     themes: ZiplineTheme[];
     defaultTheme: Config['website']['theme'];
-    req: FastifyRequest<{ Params: { username: string } }>;
+    req: FastifyRequest<{ Params: { username: string }; Querystring: { clip?: string } }>;
   },
   url: string,
 ) {
@@ -42,18 +43,13 @@ export async function render(
   });
   if (!user) return { html: 'Not Found', meta: '', status: 404 };
 
-  let visitorId: string | null = null;
-  const visitorCookie = req.cookies?.zipline_visitor;
-  if (visitorCookie) {
-    const unsigned = req.unsignCookie(visitorCookie);
-    if (unsigned.valid) visitorId = unsigned.value;
-  }
+  const visitorId = readVisitorId(req);
 
   const rawFiles = await prisma.file.findMany({
     where: { userId: user.id, showOnProfile: true, password: null },
     select: {
       ...fileSelect,
-      _count: { select: { likes: true } },
+      _count: { select: { likes: true, comments: true } },
       likes: visitorId ? { where: { visitorId }, select: { id: true } } : false,
     },
     orderBy: { createdAt: 'desc' },
@@ -61,7 +57,7 @@ export async function render(
 
   const files = cleanFiles(rawFiles, true).map((file: any) => {
     const { _count, likes, ...rest } = file;
-    return { ...rest, likeCount: _count.likes, likedByMe: !!likes?.length };
+    return { ...rest, likeCount: _count.likes, commentCount: _count.comments, likedByMe: !!likes?.length };
   });
 
   let host = req.headers.host || 'localhost';
@@ -82,7 +78,10 @@ export async function render(
 
   const themes = await readThemes();
 
-  const data = { user, files, username, host };
+  const openClipId = req.query?.clip;
+  const openClip = openClipId ? files.find((f) => f.id === openClipId) : undefined;
+
+  const data = { user, files, username, host, openClipId: openClip?.id ?? null };
 
   const routes = createRoutes(themes, defaultTheme);
   const { query } = createStaticHandler(routes);
@@ -103,20 +102,41 @@ export async function render(
   const safeUsername = stripHtml(user.username);
   const pageUrl = `${host}${url.split('?')[0]}`;
 
-  const firstVideoThumbnail = files.find((f) => f.type?.startsWith('video/') && f.thumbnail)?.thumbnail?.path;
-  const ogImage = firstVideoThumbnail
-    ? `${host}/raw/${firstVideoThumbnail}`
-    : `${host}/api/users/${encodeURIComponent(user.username)}/avatar`;
+  let headMeta: string;
 
-  const headMeta = [
-    `<title>${safeUsername}'s clips</title>`,
-    `<meta property="og:title" content="${safeUsername}'s clips" />`,
-    `<meta property="og:description" content="${files.length} clip${files.length === 1 ? '' : 's'} shared" />`,
-    `<meta property="og:url" content="${pageUrl}" />`,
-    '<meta property="og:type" content="profile" />',
-    `<meta property="og:image" content="${ogImage}" />`,
-    '<meta name="twitter:card" content="summary_large_image" />',
-  ].join('\n');
+  if (openClip) {
+    const safeCaption = stripHtml(openClip.profileCaption || openClip.originalName || openClip.name);
+    const clipImage = openClip.thumbnail
+      ? `${host}/raw/${openClip.thumbnail.path}`
+      : `${host}/api/users/${encodeURIComponent(user.username)}/avatar`;
+
+    headMeta = [
+      `<title>${safeCaption} — ${safeUsername}'s clips</title>`,
+      `<meta property="og:title" content="${safeCaption}" />`,
+      `<meta property="og:description" content="A clip shared by ${safeUsername}" />`,
+      `<meta property="og:url" content="${pageUrl}?clip=${encodeURIComponent(openClip.id)}" />`,
+      '<meta property="og:type" content="video.other" />',
+      `<meta property="og:image" content="${clipImage}" />`,
+      `<meta property="og:video:url" content="${host}/raw/${openClip.name}" />`,
+      '<meta name="twitter:card" content="summary_large_image" />',
+    ].join('\n');
+  } else {
+    const firstVideoThumbnail = files.find((f) => f.type?.startsWith('video/') && f.thumbnail)?.thumbnail
+      ?.path;
+    const ogImage = firstVideoThumbnail
+      ? `${host}/raw/${firstVideoThumbnail}`
+      : `${host}/api/users/${encodeURIComponent(user.username)}/avatar`;
+
+    headMeta = [
+      `<title>${safeUsername}'s clips</title>`,
+      `<meta property="og:title" content="${safeUsername}'s clips" />`,
+      `<meta property="og:description" content="${files.length} clip${files.length === 1 ? '' : 's'} shared" />`,
+      `<meta property="og:url" content="${pageUrl}" />`,
+      '<meta property="og:type" content="profile" />',
+      `<meta property="og:image" content="${ogImage}" />`,
+      '<meta name="twitter:card" content="summary_large_image" />',
+    ].join('\n');
+  }
 
   return {
     html,

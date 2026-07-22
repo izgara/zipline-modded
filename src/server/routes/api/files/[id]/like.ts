@@ -1,8 +1,7 @@
 import { ApiError } from '@/lib/api/errors';
-import { config } from '@/lib/config';
-import { createToken } from '@/lib/crypto';
 import { prisma } from '@/lib/db';
 import { secondlyRatelimit } from '@/lib/ratelimits';
+import { ensureVisitorId } from '@/lib/visitor';
 import typedPlugin from '@/server/typedPlugin';
 import z from 'zod';
 
@@ -10,9 +9,6 @@ export type ApiFilesIdLikeResponse = {
   liked: boolean;
   likes: number;
 };
-
-const VISITOR_COOKIE = 'zipline_visitor';
-const VISITOR_COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 5; // 5 years
 
 export const PATH = '/api/files/:id/like';
 export default typedPlugin(
@@ -41,23 +37,7 @@ export default typedPlugin(
         });
         if (!file) throw new ApiError(9002);
 
-        let visitorId: string | null = null;
-        const existingCookie = req.cookies[VISITOR_COOKIE];
-        if (existingCookie) {
-          const unsigned = req.unsignCookie(existingCookie);
-          if (unsigned.valid) visitorId = unsigned.value;
-        }
-
-        if (!visitorId) visitorId = createToken();
-
-        res.setCookie(VISITOR_COOKIE, visitorId, {
-          signed: true,
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: config.core.returnHttpsUrls,
-          maxAge: VISITOR_COOKIE_MAX_AGE,
-          path: '/',
-        });
+        const visitorId = ensureVisitorId(req, res);
 
         const existingLike = await prisma.fileLike.findUnique({
           where: { fileId_visitorId: { fileId: file.id, visitorId } },

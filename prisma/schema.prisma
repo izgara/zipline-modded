@@ -289,8 +289,9 @@ model File {
   password       String?
   anonymous      Boolean @default(false)
 
-  tags  Tag[]
-  likes FileLike[]
+  tags     Tag[]
+  likes    FileLike[]
+  comments FileComment[]
 
   User   User?   @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   userId String?
@@ -314,6 +315,20 @@ model FileLike {
   visitorId String
 
   @@unique([fileId, visitorId])
+  @@index([fileId])
+}
+
+model FileComment {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  file   File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  fileId String
+
+  visitorId   String
+  displayName String
+  content     String
+
   @@index([fileId])
 }
 

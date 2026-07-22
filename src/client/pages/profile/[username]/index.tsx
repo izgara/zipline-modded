@@ -30,9 +30,10 @@ import {
   IconPencil,
   IconTags,
 } from '@tabler/icons-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
+import ClipLightbox from './ClipLightbox';
 import ProfileClipCard, { ProfileFile } from './ProfileClipCard';
 
 type SsrData = {
@@ -40,6 +41,7 @@ type SsrData = {
   files: ProfileFile[];
   username: string;
   host: string;
+  openClipId: string | null;
 };
 
 // useMantineTheme() requires a MantineProvider ancestor, which only exists on the
@@ -69,13 +71,28 @@ function EmptyState({ text }: { text: string }) {
   );
 }
 
-function ClipGrid({ files, emptyText }: { files: ProfileFile[]; emptyText: string }) {
+function ClipGrid({
+  files,
+  emptyText,
+  username,
+  onOpenClip,
+}: {
+  files: ProfileFile[];
+  emptyText: string;
+  username: string;
+  onOpenClip: (file: ProfileFile, list: ProfileFile[]) => void;
+}) {
   if (files.length === 0) return <EmptyState text={emptyText} />;
 
   return (
     <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
       {files.map((file) => (
-        <ProfileClipCard key={file.id} file={file} />
+        <ProfileClipCard
+          key={file.id}
+          file={file}
+          username={username}
+          onOpen={() => onOpenClip(file, files)}
+        />
       ))}
     </SimpleGrid>
   );
@@ -86,8 +103,15 @@ export default function ProfileUsername() {
   const { data: self } = useSWR<Response['/api/user']>('/api/user');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [clipsSort, setClipsSort] = useState<'newest' | 'views' | 'likes'>('newest');
+  const [lightbox, setLightbox] = useState<{ file: ProfileFile; list: ProfileFile[] } | null>(null);
 
   const files = data?.files ?? [];
+
+  useEffect(() => {
+    if (!data?.openClipId) return;
+    const file = files.find((f) => f.id === data.openClipId);
+    if (file) setLightbox({ file, list: files });
+  }, [data?.openClipId, files]);
 
   const sortedFiles = useMemo(() => {
     if (clipsSort === 'newest') return files;
@@ -172,7 +196,7 @@ export default function ProfileUsername() {
               Clips
             </Tabs.Tab>
             <Tabs.Tab value='tagged' leftSection={<IconTags size='1rem' />}>
-              Tags
+              Categories
             </Tabs.Tab>
             <Tabs.Tab value='stats' leftSection={<IconChartBar size='1rem' />}>
               Stats
@@ -180,7 +204,12 @@ export default function ProfileUsername() {
           </Tabs.List>
 
           <Tabs.Panel value='home'>
-            <ClipGrid files={recentFiles} emptyText='No clips have been shared yet.' />
+            <ClipGrid
+              files={recentFiles}
+              emptyText='No clips have been shared yet.'
+              username={user.username}
+              onOpenClip={(file, list) => setLightbox({ file, list })}
+            />
           </Tabs.Panel>
 
           <Tabs.Panel value='clips'>
@@ -199,7 +228,12 @@ export default function ProfileUsername() {
                   />
                 </Group>
               )}
-              <ClipGrid files={sortedFiles} emptyText='No clips have been shared yet.' />
+              <ClipGrid
+                files={sortedFiles}
+                emptyText='No clips have been shared yet.'
+                username={user.username}
+                onOpenClip={(file, list) => setLightbox({ file, list })}
+              />
             </Stack>
           </Tabs.Panel>
 
@@ -226,6 +260,8 @@ export default function ProfileUsername() {
               <ClipGrid
                 files={taggedFiles}
                 emptyText={selectedTag ? `No clips tagged "${selectedTag}".` : 'Pick a tag above to browse.'}
+                username={user.username}
+                onOpenClip={(file, list) => setLightbox({ file, list })}
               />
             </Stack>
           </Tabs.Panel>
@@ -283,6 +319,17 @@ export default function ProfileUsername() {
           </Tabs.Panel>
         </Tabs>
       </Paper>
+
+      {lightbox && (
+        <ClipLightbox
+          file={lightbox.file}
+          files={lightbox.list}
+          username={user.username}
+          isOwner={isOwner}
+          onClose={() => setLightbox(null)}
+          onNavigate={(file) => setLightbox({ file, list: lightbox.list })}
+        />
+      )}
     </PageBackground>
   );
 }

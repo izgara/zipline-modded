@@ -1,51 +1,48 @@
 import DashboardFileType from '@/components/file/DashboardFileType';
 import RelativeDate from '@/components/RelativeDate';
 import TagPill from '@/components/pages/files/tags/TagPill';
-import { Response } from '@/lib/api/response';
+import { getDomain } from '@/lib/client/webDomain';
 import { File } from '@/lib/db/models/file';
-import { fetchApi } from '@/lib/fetchApi';
-import { ActionIcon, Card, Group, Stack, Text } from '@mantine/core';
-import { IconEye, IconHeart, IconHeartFilled } from '@tabler/icons-react';
-import { useState } from 'react';
+import { ActionIcon, Card, Group, Stack, Text, Tooltip } from '@mantine/core';
+import { useClipboard } from '@mantine/hooks';
+import { notifications } from '@mantine/notifications';
+import { IconEye, IconHeart, IconHeartFilled, IconMessageCircle, IconShare } from '@tabler/icons-react';
+import { useFileLike } from './useFileLike';
 
-export type ProfileFile = File & { likeCount: number; likedByMe: boolean };
+export type ProfileFile = File & { likeCount: number; likedByMe: boolean; commentCount: number };
 
-export default function ProfileClipCard({ file }: { file: ProfileFile }) {
-  const [show, setShow] = useState(false);
-  const [liked, setLiked] = useState(file.likedByMe);
-  const [likeCount, setLikeCount] = useState(file.likeCount);
+export function buildClipShareUrl(username: string, fileId: string) {
+  return getDomain(`/profile/${username}?clip=${encodeURIComponent(fileId)}`);
+}
 
-  const toggleLike = async (event: React.MouseEvent) => {
+export default function ProfileClipCard({
+  file,
+  username,
+  onOpen,
+}: {
+  file: ProfileFile;
+  username: string;
+  onOpen: () => void;
+}) {
+  const { liked, likeCount, toggleLike } = useFileLike(file.id, file.likedByMe, file.likeCount);
+  const clipboard = useClipboard();
+
+  const shareClip = (event: React.MouseEvent) => {
     event.stopPropagation();
-
-    const prevLiked = liked;
-    const prevCount = likeCount;
-
-    setLiked(!prevLiked);
-    setLikeCount(prevCount + (prevLiked ? -1 : 1));
-
-    const { data, error } = await fetchApi<Response['/api/files/[id]/like']>(
-      `/api/files/${file.id}/like`,
-      'POST',
-    );
-
-    if (error || !data) {
-      setLiked(prevLiked);
-      setLikeCount(prevCount);
-      return;
-    }
-
-    setLiked(data.liked);
-    setLikeCount(data.likes);
+    const url = buildClipShareUrl(username, file.id);
+    clipboard.copy(url);
+    notifications.show({
+      title: 'Copied link',
+      message: url,
+      color: 'green',
+      icon: <IconShare size='1rem' />,
+    });
   };
 
   return (
     <Card withBorder radius='md' padding={0}>
-      <Card.Section
-        style={{ overflow: 'hidden', cursor: show ? 'default' : 'pointer' }}
-        onClick={() => !show && setShow(true)}
-      >
-        <DashboardFileType file={file} show={show} />
+      <Card.Section style={{ overflow: 'hidden', cursor: 'pointer' }} onClick={onOpen}>
+        <DashboardFileType file={file} show={false} />
       </Card.Section>
 
       <Stack gap={4} p='sm'>
@@ -68,18 +65,34 @@ export default function ProfileClipCard({ file }: { file: ProfileFile }) {
               <Text size='xs'>{file.views}</Text>
             </Group>
 
-            <ActionIcon
-              size='sm'
-              variant='subtle'
-              color={liked ? 'red' : 'gray'}
-              onClick={toggleLike}
-              aria-label={liked ? 'Unlike' : 'Like'}
-            >
-              {liked ? <IconHeartFilled size='0.9rem' /> : <IconHeart size='0.9rem' />}
-            </ActionIcon>
-            <Text size='xs' c='dimmed' ml={-6}>
-              {likeCount}
-            </Text>
+            <Group gap={2}>
+              <ActionIcon
+                size='sm'
+                variant='subtle'
+                color={liked ? 'red' : 'gray'}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggleLike();
+                }}
+                aria-label={liked ? 'Unlike' : 'Like'}
+              >
+                {liked ? <IconHeartFilled size='0.9rem' /> : <IconHeart size='0.9rem' />}
+              </ActionIcon>
+              <Text size='xs' c='dimmed'>
+                {likeCount}
+              </Text>
+            </Group>
+
+            <Group gap={2} c='dimmed'>
+              <IconMessageCircle size='0.9rem' />
+              <Text size='xs'>{file.commentCount}</Text>
+            </Group>
+
+            <Tooltip label='Copy share link'>
+              <ActionIcon size='sm' variant='subtle' color='gray' onClick={shareClip} aria-label='Share'>
+                <IconShare size='0.9rem' />
+              </ActionIcon>
+            </Tooltip>
           </Group>
 
           <Text size='xs' c='dimmed'>
