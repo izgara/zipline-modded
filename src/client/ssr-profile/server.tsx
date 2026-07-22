@@ -121,11 +121,7 @@ export async function render(
       '<meta name="twitter:card" content="summary_large_image" />',
     ].join('\n');
   } else {
-    const firstVideoThumbnail = files.find((f) => f.type?.startsWith('video/') && f.thumbnail)?.thumbnail
-      ?.path;
-    const ogImage = firstVideoThumbnail
-      ? `${host}/raw/${firstVideoThumbnail}`
-      : `${host}/api/users/${encodeURIComponent(user.username)}/avatar`;
+    const avatarImage = `${host}/api/users/${encodeURIComponent(user.username)}/avatar`;
 
     headMeta = [
       `<title>${safeUsername}'s clips</title>`,
@@ -133,8 +129,8 @@ export async function render(
       `<meta property="og:description" content="${files.length} clip${files.length === 1 ? '' : 's'} shared" />`,
       `<meta property="og:url" content="${pageUrl}" />`,
       '<meta property="og:type" content="profile" />',
-      `<meta property="og:image" content="${ogImage}" />`,
-      '<meta name="twitter:card" content="summary_large_image" />',
+      `<meta property="og:image" content="${avatarImage}" />`,
+      '<meta name="twitter:card" content="summary" />',
     ].join('\n');
   }
 
