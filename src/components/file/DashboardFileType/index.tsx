@@ -62,6 +62,7 @@ export default function DashboardFileType({
   allowZoom,
   fullscreen,
   scrollParent,
+  muted,
 }: {
   file: DbFile | File;
   show?: boolean;
@@ -70,6 +71,7 @@ export default function DashboardFileType({
   allowZoom?: boolean;
   fullscreen?: boolean;
   scrollParent?: HTMLElement | null;
+  muted?: boolean;
 }) {
   const disableMediaPreview = useSettingsStore((state) => state.settings.disableMediaPreview);
   const mediaAutoMuted = useSettingsStore((state) => state.settings.mediaAutoMuted);
@@ -144,14 +146,14 @@ export default function DashboardFileType({
       <video
         width={fullscreen ? undefined : '100%'}
         autoPlay
-        muted={mediaAutoMuted}
+        muted={muted ?? mediaAutoMuted}
         controls
         src={fileUrl}
         style={{
           cursor: 'pointer',
           objectFit: 'contain',
           ...(fullscreen
-            ? { maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }
+            ? { maxWidth: '100%', maxHeight: '100%', width: '100%', height: '100%' }
             : { maxWidth: '85vw', maxHeight: '85vh', width: '100%' }),
         }}
       />

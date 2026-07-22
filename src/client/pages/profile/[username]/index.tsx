@@ -14,6 +14,7 @@ import {
   Group,
   Paper,
   SegmentedControl,
+  Select,
   SimpleGrid,
   Stack,
   Tabs,
@@ -28,6 +29,7 @@ import {
   IconHome2,
   IconMovie,
   IconPencil,
+  IconSearch,
   IconTags,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -102,6 +104,7 @@ export default function ProfileUsername() {
   const data = useSsrData<SsrData>();
   const { data: self } = useSWR<Response['/api/user']>('/api/user');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [homeTagFilter, setHomeTagFilter] = useState<string | null>(null);
   const [clipsSort, setClipsSort] = useState<'newest' | 'views' | 'likes'>('newest');
   const [lightbox, setLightbox] = useState<{ file: ProfileFile; list: ProfileFile[] } | null>(null);
 
@@ -124,7 +127,10 @@ export default function ProfileUsername() {
   }, [files, clipsSort]);
 
   const tags = useMemo(() => {
-    const map = new Map<string, { name: string; color: string }>();
+    const map = new Map<
+      string,
+      { id: string; name: string; color: string; icon?: string | boolean | null }
+    >();
     for (const file of files) {
       for (const tag of file.tags ?? []) {
         map.set(tag.name, tag);
@@ -156,6 +162,9 @@ export default function ProfileUsername() {
   const isOwner = self?.user?.username === user.username;
 
   const recentFiles = files.slice(0, 8);
+  const homeFiles = homeTagFilter
+    ? files.filter((f) => f.tags?.some((t) => t.name === homeTagFilter))
+    : recentFiles;
   const taggedFiles = selectedTag ? files.filter((f) => f.tags?.some((t) => t.name === selectedTag)) : files;
   const totalViews = files.reduce((sum, f) => sum + f.views, 0);
   const totalLikes = files.reduce((sum, f) => sum + f.likeCount, 0);
@@ -204,12 +213,37 @@ export default function ProfileUsername() {
           </Tabs.List>
 
           <Tabs.Panel value='home'>
-            <ClipGrid
-              files={recentFiles}
-              emptyText='No clips have been shared yet.'
-              username={user.username}
-              onOpenClip={(file, list) => setLightbox({ file, list })}
-            />
+            <Stack>
+              {tags.length > 0 && (
+                <Select
+                  placeholder='Search by game/category...'
+                  leftSection={<IconSearch size='1rem' />}
+                  searchable
+                  clearable
+                  value={homeTagFilter}
+                  onChange={setHomeTagFilter}
+                  data={tags.map((tag) => ({ value: tag.name, label: tag.name }))}
+                  renderOption={({ option }) => {
+                    const tag = tags.find((t) => t.name === option.value);
+                    return (
+                      <Group gap='xs' wrap='nowrap'>
+                        {tag?.icon && <Avatar src={`/api/tags/${tag.id}/icon`} size={18} radius='sm' />}
+                        <Text size='sm'>{option.label}</Text>
+                      </Group>
+                    );
+                  }}
+                  maw={320}
+                />
+              )}
+              <ClipGrid
+                files={homeFiles}
+                emptyText={
+                  homeTagFilter ? `No clips tagged "${homeTagFilter}".` : 'No clips have been shared yet.'
+                }
+                username={user.username}
+                onOpenClip={(file, list) => setLightbox({ file, list })}
+              />
+            </Stack>
           </Tabs.Panel>
 
           <Tabs.Panel value='clips'>

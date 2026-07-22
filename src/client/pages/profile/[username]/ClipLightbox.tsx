@@ -267,7 +267,7 @@ export default function ClipLightbox({
           }}
         >
           <Box style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-            <DashboardFileType key={file.id} file={file} show fullscreen />
+            <DashboardFileType key={file.id} file={file} show fullscreen muted={false} />
           </Box>
 
           <Stack gap={4} p='sm'>
