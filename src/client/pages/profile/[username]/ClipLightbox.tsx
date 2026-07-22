@@ -302,6 +302,12 @@ export default function ClipLightbox({
               </Group>
             )}
 
+            {!!file.mentions?.length && (
+              <Text size='xs' c='dimmed'>
+                with {file.mentions.join(', ')}
+              </Text>
+            )}
+
             <Group justify='space-between' mt={4}>
               <Group gap='sm'>
                 <Group gap={4} c='dimmed'>

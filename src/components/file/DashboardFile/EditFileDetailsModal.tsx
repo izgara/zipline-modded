@@ -8,6 +8,7 @@ import {
   NumberInput,
   PasswordInput,
   Stack,
+  TagsInput,
   Textarea,
   TextInput,
 } from '@mantine/core';
@@ -32,6 +33,7 @@ export default function EditFileDetailsModal({
     originalName: string | null;
     type: string | null;
     profileCaption: string | null;
+    mentions: string[];
   }>({
     name: file?.name ?? '',
     maxViews: file?.maxViews ?? null,
@@ -39,6 +41,7 @@ export default function EditFileDetailsModal({
     originalName: file?.originalName ?? null,
     type: file?.type ?? null,
     profileCaption: file?.profileCaption ?? null,
+    mentions: file?.mentions ?? [],
   });
 
   useEffect(() => {
@@ -50,6 +53,7 @@ export default function EditFileDetailsModal({
         originalName: file?.originalName ?? null,
         type: file?.type ?? null,
         profileCaption: file?.profileCaption ?? null,
+        mentions: file?.mentions ?? [],
       });
     } else {
       setFormData({
@@ -59,6 +63,7 @@ export default function EditFileDetailsModal({
         originalName: null,
         type: null,
         profileCaption: null,
+        mentions: [],
       });
     }
   }, [open, file]);
@@ -99,6 +104,7 @@ export default function EditFileDetailsModal({
       type?: string;
       name?: string;
       profileCaption?: string | null;
+      mentions?: string[];
     } = {};
 
     if (formData.maxViews !== null) data['maxViews'] = formData.maxViews;
@@ -107,6 +113,8 @@ export default function EditFileDetailsModal({
     if (formData.name !== file.name) data['name'] = formData.name.trim();
     if (formData.profileCaption !== (file.profileCaption ?? null))
       data['profileCaption'] = formData.profileCaption?.trim() || null;
+    if (JSON.stringify(formData.mentions) !== JSON.stringify(file.mentions ?? []))
+      data['mentions'] = formData.mentions;
 
     const passwordTrimmed = formData.password?.trim();
     if (passwordTrimmed !== '') data['password'] = passwordTrimmed;
@@ -176,6 +184,15 @@ export default function EditFileDetailsModal({
           maxLength={280}
           value={formData.profileCaption ?? ''}
           onChange={(event) => setFormData('profileCaption', event.currentTarget.value)}
+        />
+
+        <TagsInput
+          label='Mentions'
+          description='Tag other people who appear in this clip. People can search your profile by these names.'
+          placeholder='Type a name and press Enter...'
+          maxTags={10}
+          value={formData.mentions}
+          onChange={(value) => setFormData('mentions', value)}
         />
 
         <TextInput

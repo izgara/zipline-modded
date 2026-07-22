@@ -64,6 +64,7 @@ export default typedPlugin(
             favorite: z.boolean().optional(),
             showOnProfile: z.boolean().optional(),
             profileCaption: z.string().max(280).nullish(),
+            mentions: z.array(z.string().trim().min(1).max(32)).max(10).optional(),
             maxViews: z.number().min(0).optional(),
             password: z.string().nullish(),
             originalName: z.string().trim().min(1).optional().transform(zValidatePath),
@@ -97,6 +98,7 @@ export default typedPlugin(
         if (req.body.showOnProfile !== undefined) data.showOnProfile = req.body.showOnProfile;
         if (req.body.profileCaption !== undefined)
           data.profileCaption = req.body.profileCaption === '' ? null : req.body.profileCaption;
+        if (req.body.mentions !== undefined) data.mentions = req.body.mentions;
         if (req.body.originalName !== undefined) data.originalName = req.body.originalName;
         if (req.body.type !== undefined) data.type = req.body.type;
         if (req.body.anonymous !== undefined) data.anonymous = req.body.anonymous;

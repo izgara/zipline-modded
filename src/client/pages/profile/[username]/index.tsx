@@ -19,6 +19,7 @@ import {
   Stack,
   Tabs,
   Text,
+  TextInput,
   Title,
   useMantineTheme,
 } from '@mantine/core';
@@ -31,6 +32,7 @@ import {
   IconPencil,
   IconSearch,
   IconStarFilled,
+  IconUserSearch,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -101,6 +103,7 @@ export default function ProfileUsername() {
   const data = useSsrData<SsrData>();
   const { data: self } = useSWR<Response['/api/user']>('/api/user');
   const [homeTagFilter, setHomeTagFilter] = useState<string | null>(null);
+  const [mentionQuery, setMentionQuery] = useState('');
   const [clipsSort, setClipsSort] = useState<'newest' | 'views' | 'likes'>('newest');
   const [homePage, setHomePage] = useState(1);
   const [favoritesPage, setFavoritesPage] = useState(1);
@@ -114,9 +117,13 @@ export default function ProfileUsername() {
     if (file) setLightbox({ file, list: files });
   }, [data?.openClipId, files]);
 
-  const homeFilteredFiles = homeTagFilter
-    ? files.filter((f) => f.tags?.some((t) => t.name === homeTagFilter))
-    : files;
+  const trimmedMentionQuery = mentionQuery.trim().toLowerCase();
+
+  const homeFilteredFiles = files
+    .filter((f) => (homeTagFilter ? f.tags?.some((t) => t.name === homeTagFilter) : true))
+    .filter((f) =>
+      trimmedMentionQuery ? f.mentions?.some((m) => m.toLowerCase().includes(trimmedMentionQuery)) : true,
+    );
 
   const homeFiles = useMemo(() => {
     if (clipsSort === 'newest') return homeFilteredFiles;
@@ -221,32 +228,45 @@ export default function ProfileUsername() {
           <Tabs.Panel value='home'>
             <Stack>
               <Group justify='space-between' wrap='wrap'>
-                {tags.length > 0 ? (
-                  <Select
-                    placeholder='Search by game/category...'
-                    leftSection={<IconSearch size='1rem' />}
-                    searchable
-                    clearable
-                    value={homeTagFilter}
-                    onChange={(value) => {
-                      setHomeTagFilter(value);
-                      setHomePage(1);
-                    }}
-                    data={tags.map((tag) => ({ value: tag.name, label: tag.name }))}
-                    renderOption={({ option }) => {
-                      const tag = tags.find((t) => t.name === option.value);
-                      return (
-                        <Group gap='xs' wrap='nowrap'>
-                          {tag?.icon && <Avatar src={`/api/tags/${tag.id}/icon`} size={18} radius='sm' />}
-                          <Text size='sm'>{option.label}</Text>
-                        </Group>
-                      );
-                    }}
-                    maw={320}
-                  />
-                ) : (
-                  <div />
-                )}
+                <Group wrap='wrap'>
+                  {tags.length > 0 && (
+                    <Select
+                      placeholder='Search by game/category...'
+                      leftSection={<IconSearch size='1rem' />}
+                      searchable
+                      clearable
+                      value={homeTagFilter}
+                      onChange={(value) => {
+                        setHomeTagFilter(value);
+                        setHomePage(1);
+                      }}
+                      data={tags.map((tag) => ({ value: tag.name, label: tag.name }))}
+                      renderOption={({ option }) => {
+                        const tag = tags.find((t) => t.name === option.value);
+                        return (
+                          <Group gap='xs' wrap='nowrap'>
+                            {tag?.icon && <Avatar src={`/api/tags/${tag.id}/icon`} size={18} radius='sm' />}
+                            <Text size='sm'>{option.label}</Text>
+                          </Group>
+                        );
+                      }}
+                      maw={320}
+                    />
+                  )}
+
+                  {files.length > 0 && (
+                    <TextInput
+                      placeholder='Search by mentioned person...'
+                      leftSection={<IconUserSearch size='1rem' />}
+                      value={mentionQuery}
+                      onChange={(event) => {
+                        setMentionQuery(event.currentTarget.value);
+                        setHomePage(1);
+                      }}
+                      maw={280}
+                    />
+                  )}
+                </Group>
 
                 {files.length > 0 && (
                   <SegmentedControl
@@ -269,7 +289,11 @@ export default function ProfileUsername() {
                 files={pagedHomeFiles}
                 navigationList={homeFiles}
                 emptyText={
-                  homeTagFilter ? `No clips tagged "${homeTagFilter}".` : 'No clips have been shared yet.'
+                  trimmedMentionQuery
+                    ? `No clips mentioning "${mentionQuery.trim()}".`
+                    : homeTagFilter
+                      ? `No clips tagged "${homeTagFilter}".`
+                      : 'No clips have been shared yet.'
                 }
                 onOpenClip={(file, list) => setLightbox({ file, list })}
               />

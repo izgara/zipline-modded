@@ -283,11 +283,12 @@ model File {
   type           String
   views          Int     @default(0)
   maxViews       Int?
-  favorite       Boolean @default(false)
-  showOnProfile  Boolean @default(false)
+  favorite       Boolean  @default(false)
+  showOnProfile  Boolean  @default(false)
   profileCaption String?
+  mentions       String[] @default([])
   password       String?
-  anonymous      Boolean @default(false)
+  anonymous      Boolean  @default(false)
 
   tags     Tag[]
   likes    FileLike[]

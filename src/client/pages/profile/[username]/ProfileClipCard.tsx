@@ -50,6 +50,12 @@ export default function ProfileClipCard({ file, onOpen }: { file: ProfileFile; o
           </Group>
         )}
 
+        {!!file.mentions?.length && (
+          <Text size='xs' c='dimmed' lineClamp={1}>
+            with {file.mentions.join(', ')}
+          </Text>
+        )}
+
         <Group justify='space-between' mt={4}>
           <Group gap='sm'>
             <Group gap={4} c='dimmed'>
