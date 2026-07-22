@@ -2,7 +2,6 @@ import TagPill from '@/components/pages/files/tags/TagPill';
 import { useSsrData } from '@/components/ZiplineSSRProvider';
 import { Response } from '@/lib/api/response';
 import { useTitle } from '@/lib/client/hooks/useTitle';
-import { File } from '@/lib/db/models/file';
 import { LimitedUser } from '@/lib/db/models/user';
 import { ZiplineTheme } from '@/lib/theme';
 import { colorHash } from '@/lib/theme/color';
@@ -14,6 +13,7 @@ import {
   Center,
   Group,
   Paper,
+  SegmentedControl,
   SimpleGrid,
   Stack,
   Tabs,
@@ -21,15 +21,23 @@ import {
   Title,
   useMantineTheme,
 } from '@mantine/core';
-import { IconChartBar, IconEye, IconHome2, IconMovie, IconPencil, IconTags } from '@tabler/icons-react';
+import {
+  IconChartBar,
+  IconEye,
+  IconHeart,
+  IconHome2,
+  IconMovie,
+  IconPencil,
+  IconTags,
+} from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
-import ProfileClipCard from './ProfileClipCard';
+import ProfileClipCard, { ProfileFile } from './ProfileClipCard';
 
 type SsrData = {
   user: LimitedUser;
-  files: File[];
+  files: ProfileFile[];
   username: string;
   host: string;
 };
@@ -61,7 +69,7 @@ function EmptyState({ text }: { text: string }) {
   );
 }
 
-function ClipGrid({ files, emptyText }: { files: File[]; emptyText: string }) {
+function ClipGrid({ files, emptyText }: { files: ProfileFile[]; emptyText: string }) {
   if (files.length === 0) return <EmptyState text={emptyText} />;
 
   return (
@@ -77,8 +85,19 @@ export default function ProfileUsername() {
   const data = useSsrData<SsrData>();
   const { data: self } = useSWR<Response['/api/user']>('/api/user');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [clipsSort, setClipsSort] = useState<'newest' | 'views' | 'likes'>('newest');
 
   const files = data?.files ?? [];
+
+  const sortedFiles = useMemo(() => {
+    if (clipsSort === 'newest') return files;
+
+    const sorted = [...files];
+    if (clipsSort === 'views') sorted.sort((a, b) => b.views - a.views);
+    else sorted.sort((a, b) => b.likeCount - a.likeCount);
+
+    return sorted;
+  }, [files, clipsSort]);
 
   const tags = useMemo(() => {
     const map = new Map<string, { name: string; color: string }>();
@@ -115,6 +134,7 @@ export default function ProfileUsername() {
   const recentFiles = files.slice(0, 8);
   const taggedFiles = selectedTag ? files.filter((f) => f.tags?.some((t) => t.name === selectedTag)) : files;
   const totalViews = files.reduce((sum, f) => sum + f.views, 0);
+  const totalLikes = files.reduce((sum, f) => sum + f.likeCount, 0);
 
   return (
     <PageBackground>
@@ -152,7 +172,7 @@ export default function ProfileUsername() {
               Clips
             </Tabs.Tab>
             <Tabs.Tab value='tagged' leftSection={<IconTags size='1rem' />}>
-              Tagged
+              Tags
             </Tabs.Tab>
             <Tabs.Tab value='stats' leftSection={<IconChartBar size='1rem' />}>
               Stats
@@ -164,7 +184,23 @@ export default function ProfileUsername() {
           </Tabs.Panel>
 
           <Tabs.Panel value='clips'>
-            <ClipGrid files={files} emptyText='No clips have been shared yet.' />
+            <Stack>
+              {files.length > 0 && (
+                <Group justify='flex-end'>
+                  <SegmentedControl
+                    size='xs'
+                    value={clipsSort}
+                    onChange={(value) => setClipsSort(value as typeof clipsSort)}
+                    data={[
+                      { label: 'Newest', value: 'newest' },
+                      { label: 'Most Views', value: 'views' },
+                      { label: 'Most Likes', value: 'likes' },
+                    ]}
+                  />
+                </Group>
+              )}
+              <ClipGrid files={sortedFiles} emptyText='No clips have been shared yet.' />
+            </Stack>
           </Tabs.Panel>
 
           <Tabs.Panel value='tagged'>
@@ -195,7 +231,7 @@ export default function ProfileUsername() {
           </Tabs.Panel>
 
           <Tabs.Panel value='stats'>
-            <SimpleGrid cols={{ base: 1, sm: 2 }} mt='sm'>
+            <SimpleGrid cols={{ base: 1, sm: 3 }} mt='sm'>
               <Paper withBorder p='md' radius='md'>
                 <Text c='dimmed' size='sm'>
                   Total clips
@@ -211,6 +247,15 @@ export default function ProfileUsername() {
                 </Group>
                 <Text fw={700} size='xl'>
                   {totalViews}
+                </Text>
+              </Paper>
+              <Paper withBorder p='md' radius='md'>
+                <Group gap={4} c='dimmed'>
+                  <IconHeart size='0.9rem' />
+                  <Text size='sm'>Total likes</Text>
+                </Group>
+                <Text fw={700} size='xl'>
+                  {totalLikes}
                 </Text>
               </Paper>
             </SimpleGrid>

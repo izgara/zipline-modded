@@ -1,6 +1,6 @@
 import { ApiError } from '@/lib/api/errors';
 import { prisma } from '@/lib/db';
-import { Tag, tagSchema, tagSelect } from '@/lib/db/models/tag';
+import { cleanTag, cleanTags, Tag, tagSchema, tagSelect } from '@/lib/db/models/tag';
 import { log } from '@/lib/logger';
 import { secondlyRatelimit } from '@/lib/ratelimits';
 import { zStringTrimmed } from '@/lib/validation';
@@ -35,7 +35,7 @@ export default typedPlugin(
           select: tagSelect,
         });
 
-        return res.send(tags);
+        return res.send(cleanTags(tags));
       },
     );
 
@@ -47,6 +47,7 @@ export default typedPlugin(
           body: z.object({
             name: zStringTrimmed,
             color: z.string().regex(/^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$/),
+            icon: z.string().nullish(),
           }),
           response: {
             200: tagSchema,
@@ -57,7 +58,7 @@ export default typedPlugin(
         ...secondlyRatelimit(1),
       },
       async (req, res) => {
-        const { name, color } = req.body;
+        const { name, color, icon } = req.body;
 
         const existingTag = await prisma.tag.findFirst({
           where: {
@@ -72,6 +73,7 @@ export default typedPlugin(
           data: {
             name,
             color,
+            icon: icon || null,
             userId: req.user.id,
           },
           select: tagSelect,
@@ -83,7 +85,7 @@ export default typedPlugin(
           user: req.user.username,
         });
 
-        return res.send(tag);
+        return res.send(cleanTag(tag));
       },
     );
   },

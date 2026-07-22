@@ -3,7 +3,7 @@ import { sanitizeFilename } from '@/lib/fs';
 import { formatRootUrl } from '@/lib/url';
 import type { Prisma } from '@/prisma/client';
 import { z } from 'zod';
-import { tagSchema, tagSelectNoFiles } from './tag';
+import { cleanTags, tagSchema, tagSelectNoFiles } from './tag';
 
 export const fileSelect = {
   createdAt: true,
@@ -47,6 +47,7 @@ export async function findFileByName<TResult>(
 
 export function cleanFile(file: File) {
   file.password = !!file.password;
+  if (file.tags) cleanTags(file.tags);
 
   file.url = formatRootUrl(config.files.route, file.name);
 
@@ -57,6 +58,7 @@ export function cleanFiles(files: File[], stringifyDates = false) {
   for (let i = 0; i !== files.length; ++i) {
     const file = files[i];
     if (file.password) file.password = true;
+    if (file.tags) cleanTags(file.tags);
 
     if (stringifyDates) {
       if (file.createdAt instanceof Date) file.createdAt = file.createdAt.toISOString();

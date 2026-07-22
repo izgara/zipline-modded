@@ -1,14 +1,30 @@
 import { Response } from '@/lib/api/response';
+import { readToDataURL } from '@/lib/base64';
 import { Tag } from '@/lib/db/models/tag';
 import { fetchApi } from '@/lib/fetchApi';
 import { colorHash } from '@/lib/theme/color';
-import { ActionIcon, Button, ColorInput, Modal, Stack, TextInput, Tooltip } from '@mantine/core';
+import {
+  ActionIcon,
+  Avatar,
+  Button,
+  ColorInput,
+  FileInput,
+  Group,
+  Modal,
+  Stack,
+  TextInput,
+  Tooltip,
+} from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { showNotification } from '@mantine/notifications';
 import { IconTag, IconTagOff, IconTextRecognition } from '@tabler/icons-react';
+import { useState } from 'react';
 import { mutate } from 'swr';
 
 export default function CreateTagModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [icon, setIcon] = useState<File | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
+
   const form = useForm<{
     name: string;
     color: string;
@@ -21,6 +37,11 @@ export default function CreateTagModal({ open, onClose }: { open: boolean; onClo
       name: (value) => (value.length < 1 ? 'Name is required' : null),
     },
   });
+
+  const onIconChange = async (file: File | null) => {
+    setIcon(file);
+    setIconPreview(file ? await readToDataURL(file) : null);
+  };
 
   const onSubmit = async (values: typeof form.values) => {
     const color = values.color.trim() === '' ? colorHash(values.name) : values.color.trim();
@@ -35,6 +56,7 @@ export default function CreateTagModal({ open, onClose }: { open: boolean; onClo
       {
         name: values.name,
         color,
+        ...(iconPreview && { icon: iconPreview }),
       },
     );
 
@@ -55,6 +77,8 @@ export default function CreateTagModal({ open, onClose }: { open: boolean; onClo
 
       onClose();
       form.reset();
+      setIcon(null);
+      setIconPreview(null);
       mutate('/api/user/tags');
     }
   };
@@ -81,6 +105,20 @@ export default function CreateTagModal({ open, onClose }: { open: boolean; onClo
             popoverProps={{ zIndex: 3001 }}
             {...form.getInputProps('color')}
           />
+
+          <Group align='flex-end'>
+            <FileInput
+              style={{ flex: 1 }}
+              label='Icon'
+              description='Optional logo/icon shown next to this tag (e.g. a game logo).'
+              placeholder='Upload an icon...'
+              accept='image/*'
+              value={icon}
+              onChange={onIconChange}
+              clearable
+            />
+            {iconPreview && <Avatar src={iconPreview} size='md' radius='sm' />}
+          </Group>
 
           <Button type='submit' variant='outline'>
             Create tag

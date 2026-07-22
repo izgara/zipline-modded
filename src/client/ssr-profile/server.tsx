@@ -42,14 +42,27 @@ export async function render(
   });
   if (!user) return { html: 'Not Found', meta: '', status: 404 };
 
-  const files = cleanFiles(
-    await prisma.file.findMany({
-      where: { userId: user.id, showOnProfile: true, password: null },
-      select: fileSelect,
-      orderBy: { createdAt: 'desc' },
-    }),
-    true,
-  );
+  let visitorId: string | null = null;
+  const visitorCookie = req.cookies?.zipline_visitor;
+  if (visitorCookie) {
+    const unsigned = req.unsignCookie(visitorCookie);
+    if (unsigned.valid) visitorId = unsigned.value;
+  }
+
+  const rawFiles = await prisma.file.findMany({
+    where: { userId: user.id, showOnProfile: true, password: null },
+    select: {
+      ...fileSelect,
+      _count: { select: { likes: true } },
+      likes: visitorId ? { where: { visitorId }, select: { id: true } } : false,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const files = cleanFiles(rawFiles, true).map((file: any) => {
+    const { _count, likes, ...rest } = file;
+    return { ...rest, likeCount: _count.likes, likedByMe: !!likes?.length };
+  });
 
   let host = req.headers.host || 'localhost';
   const proto = req.headers['x-forwarded-proto'];

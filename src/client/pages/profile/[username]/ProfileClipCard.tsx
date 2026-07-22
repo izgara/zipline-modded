@@ -1,13 +1,43 @@
 import DashboardFileType from '@/components/file/DashboardFileType';
 import RelativeDate from '@/components/RelativeDate';
 import TagPill from '@/components/pages/files/tags/TagPill';
+import { Response } from '@/lib/api/response';
 import { File } from '@/lib/db/models/file';
-import { Card, Group, Stack, Text } from '@mantine/core';
-import { IconEye } from '@tabler/icons-react';
+import { fetchApi } from '@/lib/fetchApi';
+import { ActionIcon, Card, Group, Stack, Text } from '@mantine/core';
+import { IconEye, IconHeart, IconHeartFilled } from '@tabler/icons-react';
 import { useState } from 'react';
 
-export default function ProfileClipCard({ file }: { file: File }) {
+export type ProfileFile = File & { likeCount: number; likedByMe: boolean };
+
+export default function ProfileClipCard({ file }: { file: ProfileFile }) {
   const [show, setShow] = useState(false);
+  const [liked, setLiked] = useState(file.likedByMe);
+  const [likeCount, setLikeCount] = useState(file.likeCount);
+
+  const toggleLike = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+
+    const prevLiked = liked;
+    const prevCount = likeCount;
+
+    setLiked(!prevLiked);
+    setLikeCount(prevCount + (prevLiked ? -1 : 1));
+
+    const { data, error } = await fetchApi<Response['/api/files/[id]/like']>(
+      `/api/files/${file.id}/like`,
+      'POST',
+    );
+
+    if (error || !data) {
+      setLiked(prevLiked);
+      setLikeCount(prevCount);
+      return;
+    }
+
+    setLiked(data.liked);
+    setLikeCount(data.likes);
+  };
 
   return (
     <Card withBorder radius='md' padding={0}>
@@ -32,10 +62,26 @@ export default function ProfileClipCard({ file }: { file: File }) {
         )}
 
         <Group justify='space-between' mt={4}>
-          <Group gap={4} c='dimmed'>
-            <IconEye size='0.9rem' />
-            <Text size='xs'>{file.views}</Text>
+          <Group gap='sm'>
+            <Group gap={4} c='dimmed'>
+              <IconEye size='0.9rem' />
+              <Text size='xs'>{file.views}</Text>
+            </Group>
+
+            <ActionIcon
+              size='sm'
+              variant='subtle'
+              color={liked ? 'red' : 'gray'}
+              onClick={toggleLike}
+              aria-label={liked ? 'Unlike' : 'Like'}
+            >
+              {liked ? <IconHeartFilled size='0.9rem' /> : <IconHeart size='0.9rem' />}
+            </ActionIcon>
+            <Text size='xs' c='dimmed' ml={-6}>
+              {likeCount}
+            </Text>
           </Group>
+
           <Text size='xs' c='dimmed'>
             <RelativeDate date={file.createdAt} />
           </Text>

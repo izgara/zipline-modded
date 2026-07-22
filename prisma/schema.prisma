@@ -289,7 +289,8 @@ model File {
   password       String?
   anonymous      Boolean @default(false)
 
-  tags Tag[]
+  tags  Tag[]
+  likes FileLike[]
 
   User   User?   @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   userId String?
@@ -301,6 +302,19 @@ model File {
 
   @@index([name])
   @@index([folderId, createdAt])
+}
+
+model FileLike {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  file   File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  fileId String
+
+  visitorId String
+
+  @@unique([fileId, visitorId])
+  @@index([fileId])
 }
 
 model Thumbnail {
@@ -362,8 +376,9 @@ model Tag {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  name  String @unique
+  name  String  @unique
   color String
+  icon  String?
 
   files  File[]
   User   User?   @relation(fields: [userId], references: [id])

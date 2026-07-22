@@ -1,6 +1,6 @@
 import { ApiError } from '@/lib/api/errors';
 import { prisma } from '@/lib/db';
-import { Tag, tagSchema, tagSelect } from '@/lib/db/models/tag';
+import { cleanTag, Tag, tagSchema, tagSelect } from '@/lib/db/models/tag';
 import { log } from '@/lib/logger';
 import { zStringTrimmed } from '@/lib/validation';
 import { userMiddleware } from '@/server/middleware/user';
@@ -43,7 +43,7 @@ export default typedPlugin(
         });
         if (!tag) throw new ApiError(9002);
 
-        return res.send(tag);
+        return res.send(cleanTag(tag));
       },
     );
 
@@ -95,6 +95,7 @@ export default typedPlugin(
               .string()
               .regex(/^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$/)
               .optional(),
+            icon: z.string().nullish(),
           }),
           response: {
             200: tagSchema,
@@ -105,7 +106,7 @@ export default typedPlugin(
       },
       async (req, res) => {
         const { id } = req.params;
-        const { name, color } = req.body;
+        const { name, color, icon } = req.body;
 
         const existingTag = await prisma.tag.findFirst({
           where: {
@@ -132,6 +133,7 @@ export default typedPlugin(
           data: {
             ...(name && { name }),
             ...(color && { color }),
+            ...(icon !== undefined && { icon: icon || null }),
           },
           select: tagSelect,
         });
@@ -142,7 +144,7 @@ export default typedPlugin(
           user: req.user.username,
         });
 
-        return res.send(tag);
+        return res.send(cleanTag(tag));
       },
     );
   },

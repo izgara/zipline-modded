@@ -6,6 +6,7 @@ export const tagSelect = {
   updatedAt: true,
   name: true,
   color: true,
+  icon: true,
   files: {
     select: {
       id: true,
@@ -19,6 +20,7 @@ export const tagSelectNoFiles = {
   updatedAt: true,
   name: true,
   color: true,
+  icon: true,
 };
 
 export const tagSchema = z.object({
@@ -27,6 +29,7 @@ export const tagSchema = z.object({
   updatedAt: z.date(),
   name: z.string(),
   color: z.string(),
+  icon: z.union([z.string(), z.boolean()]).nullish(),
   files: z
     .array(
       z.object({
@@ -37,3 +40,17 @@ export const tagSchema = z.object({
 });
 
 export type Tag = z.infer<typeof tagSchema>;
+
+export function cleanTag(tag: Tag) {
+  tag.icon = !!tag.icon;
+
+  return tag;
+}
+
+export function cleanTags(tags: Tag[]) {
+  for (let i = 0; i !== tags.length; ++i) {
+    if (tags[i].icon) tags[i].icon = true;
+  }
+
+  return tags;
+}

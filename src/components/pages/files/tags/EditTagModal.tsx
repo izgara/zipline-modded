@@ -1,12 +1,24 @@
 import { Response } from '@/lib/api/response';
+import { readToDataURL } from '@/lib/base64';
 import { Tag } from '@/lib/db/models/tag';
 import { fetchApi } from '@/lib/fetchApi';
 import { colorHash } from '@/lib/theme/color';
-import { ActionIcon, Button, ColorInput, Modal, Stack, TextInput, Tooltip } from '@mantine/core';
+import {
+  ActionIcon,
+  Avatar,
+  Button,
+  ColorInput,
+  FileInput,
+  Group,
+  Modal,
+  Stack,
+  TextInput,
+  Tooltip,
+} from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { showNotification } from '@mantine/notifications';
-import { IconTag, IconTagOff, IconTextRecognition } from '@tabler/icons-react';
-import { useEffect } from 'react';
+import { IconTag, IconTagOff, IconTextRecognition, IconX } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
 import { mutate } from 'swr';
 
 export default function EditTagModal({
@@ -18,6 +30,13 @@ export default function EditTagModal({
   open: boolean;
   onClose: () => void;
 }) {
+  const [iconState, setIconState] = useState<{
+    file: File | null;
+    preview: string | null;
+    remove: boolean;
+  }>({ file: null, preview: null, remove: false });
+  const { file: newIcon, preview: newIconPreview, remove: removeIcon } = iconState;
+
   const form = useForm<{
     name: string;
     color: string;
@@ -30,6 +49,13 @@ export default function EditTagModal({
       name: (value) => (value.length < 1 ? 'Name is required' : null),
     },
   });
+
+  const onIconChange = async (file: File | null) => {
+    const preview = file ? await readToDataURL(file) : null;
+    setIconState({ file, preview, remove: file ? false : removeIcon });
+  };
+
+  const iconChanged = !!newIcon || removeIcon;
 
   const onSubmit = async (values: typeof form.values) => {
     const color = values.color.trim() === '' ? colorHash(values.name) : values.color.trim();
@@ -44,6 +70,8 @@ export default function EditTagModal({
       {
         ...(values.name !== tag!.name && { name: values.name }),
         ...(color !== tag!.color && { color }),
+        ...(newIconPreview && { icon: newIconPreview }),
+        ...(removeIcon && !newIconPreview && { icon: null }),
       },
     );
 
@@ -73,6 +101,7 @@ export default function EditTagModal({
       form.setFieldValue('name', tag.name);
       form.setFieldValue('color', tag.color);
       form.resetDirty();
+      setIconState({ file: null, preview: null, remove: false });
     }
   }, [tag]);
 
@@ -99,7 +128,39 @@ export default function EditTagModal({
             {...form.getInputProps('color')}
           />
 
-          <Button type='submit' variant='outline' disabled={!form.isDirty}>
+          <Group align='flex-end'>
+            <FileInput
+              style={{ flex: 1 }}
+              label='Icon'
+              description='Optional logo/icon shown next to this tag (e.g. a game logo).'
+              placeholder='Upload a new icon...'
+              accept='image/*'
+              value={newIcon}
+              onChange={onIconChange}
+              clearable
+            />
+            {newIconPreview ? (
+              <Avatar src={newIconPreview} size='md' radius='sm' />
+            ) : (
+              tag?.icon &&
+              !removeIcon && (
+                <>
+                  <Avatar src={`/api/tags/${tag.id}/icon`} size='md' radius='sm' />
+                  <Tooltip label='Remove icon'>
+                    <ActionIcon
+                      color='red'
+                      variant='light'
+                      onClick={() => setIconState((s) => ({ ...s, remove: true }))}
+                    >
+                      <IconX size='1rem' />
+                    </ActionIcon>
+                  </Tooltip>
+                </>
+              )
+            )}
+          </Group>
+
+          <Button type='submit' variant='outline' disabled={!form.isDirty() && !iconChanged}>
             Edit tag
           </Button>
         </Stack>
