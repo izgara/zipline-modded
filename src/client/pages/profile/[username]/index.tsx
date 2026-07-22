@@ -11,6 +11,7 @@ import {
   Button,
   Center,
   Group,
+  Pagination,
   Paper,
   SegmentedControl,
   Select,
@@ -35,6 +36,8 @@ import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import ClipLightbox from './ClipLightbox';
 import ProfileClipCard, { ProfileFile } from './ProfileClipCard';
+
+const HOME_PAGE_SIZE = 18;
 
 type SsrData = {
   user: LimitedUser;
@@ -73,10 +76,12 @@ function EmptyState({ text }: { text: string }) {
 
 function ClipGrid({
   files,
+  navigationList,
   emptyText,
   onOpenClip,
 }: {
   files: ProfileFile[];
+  navigationList?: ProfileFile[];
   emptyText: string;
   onOpenClip: (file: ProfileFile, list: ProfileFile[]) => void;
 }) {
@@ -85,7 +90,7 @@ function ClipGrid({
   return (
     <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
       {files.map((file) => (
-        <ProfileClipCard key={file.id} file={file} onOpen={() => onOpenClip(file, files)} />
+        <ProfileClipCard key={file.id} file={file} onOpen={() => onOpenClip(file, navigationList ?? files)} />
       ))}
     </SimpleGrid>
   );
@@ -96,6 +101,7 @@ export default function ProfileUsername() {
   const { data: self } = useSWR<Response['/api/user']>('/api/user');
   const [homeTagFilter, setHomeTagFilter] = useState<string | null>(null);
   const [clipsSort, setClipsSort] = useState<'newest' | 'views' | 'likes'>('newest');
+  const [homePage, setHomePage] = useState(1);
   const [lightbox, setLightbox] = useState<{ file: ProfileFile; list: ProfileFile[] } | null>(null);
 
   const files = data?.files ?? [];
@@ -119,6 +125,9 @@ export default function ProfileUsername() {
 
     return sorted;
   }, [homeFilteredFiles, clipsSort]);
+
+  const homePageCount = Math.ceil(homeFiles.length / HOME_PAGE_SIZE);
+  const pagedHomeFiles = homeFiles.slice((homePage - 1) * HOME_PAGE_SIZE, homePage * HOME_PAGE_SIZE);
 
   const tags = useMemo(() => {
     const map = new Map<
@@ -205,7 +214,10 @@ export default function ProfileUsername() {
                     searchable
                     clearable
                     value={homeTagFilter}
-                    onChange={setHomeTagFilter}
+                    onChange={(value) => {
+                      setHomeTagFilter(value);
+                      setHomePage(1);
+                    }}
                     data={tags.map((tag) => ({ value: tag.name, label: tag.name }))}
                     renderOption={({ option }) => {
                       const tag = tags.find((t) => t.name === option.value);
@@ -226,7 +238,10 @@ export default function ProfileUsername() {
                   <SegmentedControl
                     size='xs'
                     value={clipsSort}
-                    onChange={(value) => setClipsSort(value as typeof clipsSort)}
+                    onChange={(value) => {
+                      setClipsSort(value as typeof clipsSort);
+                      setHomePage(1);
+                    }}
                     data={[
                       { label: 'Newest', value: 'newest' },
                       { label: 'Most Views', value: 'views' },
@@ -237,12 +252,19 @@ export default function ProfileUsername() {
               </Group>
 
               <ClipGrid
-                files={homeFiles}
+                files={pagedHomeFiles}
+                navigationList={homeFiles}
                 emptyText={
                   homeTagFilter ? `No clips tagged "${homeTagFilter}".` : 'No clips have been shared yet.'
                 }
                 onOpenClip={(file, list) => setLightbox({ file, list })}
               />
+
+              {homePageCount > 1 && (
+                <Group justify='center'>
+                  <Pagination total={homePageCount} value={homePage} onChange={setHomePage} />
+                </Group>
+              )}
             </Stack>
           </Tabs.Panel>
 
