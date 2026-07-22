@@ -74,12 +74,10 @@ function EmptyState({ text }: { text: string }) {
 function ClipGrid({
   files,
   emptyText,
-  username,
   onOpenClip,
 }: {
   files: ProfileFile[];
   emptyText: string;
-  username: string;
   onOpenClip: (file: ProfileFile, list: ProfileFile[]) => void;
 }) {
   if (files.length === 0) return <EmptyState text={emptyText} />;
@@ -87,12 +85,7 @@ function ClipGrid({
   return (
     <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
       {files.map((file) => (
-        <ProfileClipCard
-          key={file.id}
-          file={file}
-          username={username}
-          onOpen={() => onOpenClip(file, files)}
-        />
+        <ProfileClipCard key={file.id} file={file} onOpen={() => onOpenClip(file, files)} />
       ))}
     </SimpleGrid>
   );
@@ -248,7 +241,6 @@ export default function ProfileUsername() {
                 emptyText={
                   homeTagFilter ? `No clips tagged "${homeTagFilter}".` : 'No clips have been shared yet.'
                 }
-                username={user.username}
                 onOpenClip={(file, list) => setLightbox({ file, list })}
               />
             </Stack>
@@ -312,7 +304,6 @@ export default function ProfileUsername() {
         <ClipLightbox
           file={lightbox.file}
           files={lightbox.list}
-          username={user.username}
           isOwner={isOwner}
           onClose={() => setLightbox(null)}
           onNavigate={(file) => setLightbox({ file, list: lightbox.list })}

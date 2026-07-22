@@ -11,25 +11,17 @@ import { useFileLike } from './useFileLike';
 
 export type ProfileFile = File & { likeCount: number; likedByMe: boolean; commentCount: number };
 
-export function buildClipShareUrl(username: string, fileId: string) {
-  return getDomain(`/profile/${username}?clip=${encodeURIComponent(fileId)}`);
+export function buildClipShareUrl(file: ProfileFile) {
+  return file.url ? getDomain(file.url) : getDomain(`/view/${file.name}`);
 }
 
-export default function ProfileClipCard({
-  file,
-  username,
-  onOpen,
-}: {
-  file: ProfileFile;
-  username: string;
-  onOpen: () => void;
-}) {
+export default function ProfileClipCard({ file, onOpen }: { file: ProfileFile; onOpen: () => void }) {
   const { liked, likeCount, toggleLike } = useFileLike(file.id, file.likedByMe, file.likeCount);
   const clipboard = useClipboard();
 
   const shareClip = (event: React.MouseEvent) => {
     event.stopPropagation();
-    const url = buildClipShareUrl(username, file.id);
+    const url = buildClipShareUrl(file);
     clipboard.copy(url);
     notifications.show({
       title: 'Copied link',

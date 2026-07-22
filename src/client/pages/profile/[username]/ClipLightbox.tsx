@@ -151,14 +151,12 @@ function CommentsPanel({ file, isOwner }: { file: ProfileFile; isOwner: boolean 
 export default function ClipLightbox({
   file,
   files,
-  username,
   isOwner,
   onClose,
   onNavigate,
 }: {
   file: ProfileFile;
   files: ProfileFile[];
-  username: string;
   isOwner: boolean;
   onClose: () => void;
   onNavigate: (file: ProfileFile) => void;
@@ -186,7 +184,7 @@ export default function ClipLightbox({
   }, [prev, next, onClose, onNavigate]);
 
   const shareClip = () => {
-    const url = buildClipShareUrl(username, file.id);
+    const url = buildClipShareUrl(file);
     clipboard.copy(url);
     notifications.show({
       title: 'Copied link',
