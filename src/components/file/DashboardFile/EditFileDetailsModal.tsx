@@ -1,7 +1,16 @@
 import { File } from '@/lib/db/models/file';
 import { fetchApi } from '@/lib/fetchApi';
 import useObjectState from '@/lib/client/hooks/useObjectState';
-import { Button, Divider, Modal, NumberInput, PasswordInput, Stack, TextInput } from '@mantine/core';
+import {
+  Button,
+  Divider,
+  Modal,
+  NumberInput,
+  PasswordInput,
+  Stack,
+  Textarea,
+  TextInput,
+} from '@mantine/core';
 import { showNotification } from '@mantine/notifications';
 import { IconEye, IconKey, IconPencil, IconPencilOff, IconTrashFilled } from '@tabler/icons-react';
 import { useEffect } from 'react';
@@ -22,12 +31,14 @@ export default function EditFileDetailsModal({
     password: string | null;
     originalName: string | null;
     type: string | null;
+    profileCaption: string | null;
   }>({
     name: file?.name ?? '',
     maxViews: file?.maxViews ?? null,
     password: file?.password ? '' : null,
     originalName: file?.originalName ?? null,
     type: file?.type ?? null,
+    profileCaption: file?.profileCaption ?? null,
   });
 
   useEffect(() => {
@@ -38,6 +49,7 @@ export default function EditFileDetailsModal({
         password: file?.password ? '' : null,
         originalName: file?.originalName ?? null,
         type: file?.type ?? null,
+        profileCaption: file?.profileCaption ?? null,
       });
     } else {
       setFormData({
@@ -46,6 +58,7 @@ export default function EditFileDetailsModal({
         password: null,
         originalName: null,
         type: null,
+        profileCaption: null,
       });
     }
   }, [open, file]);
@@ -85,12 +98,15 @@ export default function EditFileDetailsModal({
       originalName?: string;
       type?: string;
       name?: string;
+      profileCaption?: string | null;
     } = {};
 
     if (formData.maxViews !== null) data['maxViews'] = formData.maxViews;
     if (formData.originalName !== null) data['originalName'] = formData.originalName?.trim();
     if (formData.type !== null) data['type'] = formData.type?.trim();
     if (formData.name !== file.name) data['name'] = formData.name.trim();
+    if (formData.profileCaption !== (file.profileCaption ?? null))
+      data['profileCaption'] = formData.profileCaption?.trim() || null;
 
     const passwordTrimmed = formData.password?.trim();
     if (passwordTrimmed !== '') data['password'] = passwordTrimmed;
@@ -149,6 +165,17 @@ export default function EditFileDetailsModal({
               event.currentTarget.value.trim() === '' ? null : event.currentTarget.value.trim(),
             )
           }
+        />
+
+        <Textarea
+          label='Profile caption'
+          description="Shown on your public profile page for this clip. Leave blank to just show the file's name."
+          autosize
+          minRows={2}
+          maxRows={4}
+          maxLength={280}
+          value={formData.profileCaption ?? ''}
+          onChange={(event) => setFormData('profileCaption', event.currentTarget.value)}
         />
 
         <TextInput

@@ -1,9 +1,9 @@
-import { Pill, isLightColor } from '@mantine/core';
+import { Pill, PillProps, isLightColor } from '@mantine/core';
 
 export default function TagPill({
   tag,
   ...other
-}: {
+}: Omit<PillProps, 'children' | 'bg' | 'c' | 'title'> & {
   tag: { color: string; name: string } | null;
   withRemoveButton?: boolean;
   onRemove?: () => void;
