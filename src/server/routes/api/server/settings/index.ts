@@ -34,6 +34,7 @@ export const reservedRoutes = [
   '/r',
   '/invite',
   '/view',
+  '/profile',
   '/robots.txt',
   '/manifest.json',
   '/favicon.ico',

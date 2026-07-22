@@ -22,6 +22,10 @@ export async function registerRoutes(server: FastifyInstance, mode: string) {
     return res.ssr('view-url');
   });
 
+  server.get<{ Params: { username: string } }>('/profile/:username', async (_req, res) => {
+    return res.ssr('profile');
+  });
+
   if (config.files.route === '/' && config.urls.route === '/') {
     logger.debug('files & urls route = /, using catch-all route');
 

@@ -58,7 +58,7 @@ async function vitePlugin(fastify: FastifyInstance) {
     });
   }
 
-  async function ssrRoute(this: FastifyReply, type: 'view-url' | 'view') {
+  async function ssrRoute(this: FastifyReply, type: 'view-url' | 'view' | 'profile') {
     const url = this.request.raw.url || '/';
 
     try {
@@ -129,7 +129,7 @@ declare module 'fastify' {
   }
 
   interface FastifyReply {
-    ssr: (type: 'view-url' | 'view') => Promise<void>;
+    ssr: (type: 'view-url' | 'view' | 'profile') => Promise<void>;
     serveIndex: () => Promise<void>;
   }
 }

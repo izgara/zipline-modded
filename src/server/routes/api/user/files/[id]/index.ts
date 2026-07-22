@@ -62,6 +62,7 @@ export default typedPlugin(
           params: paramsSchema,
           body: z.object({
             favorite: z.boolean().optional(),
+            showOnProfile: z.boolean().optional(),
             maxViews: z.number().min(0).optional(),
             password: z.string().nullish(),
             originalName: z.string().trim().min(1).optional().transform(zValidatePath),
@@ -92,6 +93,7 @@ export default typedPlugin(
         const data: Prisma.FileUpdateInput = {};
 
         if (req.body.favorite !== undefined) data.favorite = req.body.favorite;
+        if (req.body.showOnProfile !== undefined) data.showOnProfile = req.body.showOnProfile;
         if (req.body.originalName !== undefined) data.originalName = req.body.originalName;
         if (req.body.type !== undefined) data.type = req.body.type;
         if (req.body.anonymous !== undefined) data.anonymous = req.body.anonymous;

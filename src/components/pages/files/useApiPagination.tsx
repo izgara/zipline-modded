@@ -17,7 +17,8 @@ type ApiPaginationOptions = {
     | 'size'
     | 'type'
     | 'views'
-    | 'favorite';
+    | 'favorite'
+    | 'showOnProfile';
   order?: 'asc' | 'desc';
   id?: string;
   folderId?: string;

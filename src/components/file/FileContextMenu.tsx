@@ -18,6 +18,7 @@ import {
   IconStar,
   IconStarFilled,
   IconTrashFilled,
+  IconUserCircle,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -28,6 +29,7 @@ import {
   downloadFile,
   favoriteFile,
   removeFromFolder,
+  toggleShowOnProfile,
   viewFile,
 } from './actions';
 import EditFileDetailsModal from './DashboardFile/EditFileDetailsModal';
@@ -233,6 +235,20 @@ export default function FileContextMenu({
               >
                 {file.favorite ? 'Unfavorite' : 'Favorite'}
               </Menu.Item>
+
+              {file.type?.startsWith('video/') && (
+                <Menu.Item
+                  leftSection={
+                    <IconUserCircle
+                      size='1rem'
+                      color={file.showOnProfile ? 'var(--mantine-color-blue-5)' : undefined}
+                    />
+                  }
+                  onClick={stop(run(() => toggleShowOnProfile(file)))}
+                >
+                  {file.showOnProfile ? 'Remove from profile' : 'Show on profile'}
+                </Menu.Item>
+              )}
 
               {file.folderId ? (
                 <Menu.Item

@@ -17,6 +17,7 @@ import {
   IconStarFilled,
   IconTrashFilled,
   IconTrashXFilled,
+  IconUserCircle,
 } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 import { mutate } from 'swr';
@@ -104,6 +105,34 @@ export async function favoriteFile(file: File) {
       message: `${file.name} has been ${data!.favorite ? 'favorited' : 'unfavorited'}`,
       color: 'yellow',
       icon: <IconStarFilled size='1rem' />,
+    });
+  }
+
+  mutateFiles();
+}
+
+export async function toggleShowOnProfile(file: File) {
+  const { data, error } = await fetchApi<Response['/api/user/files/[id]']>(
+    `/api/user/files/${file.id}`,
+    'PATCH',
+    {
+      showOnProfile: !file.showOnProfile,
+    },
+  );
+
+  if (error) {
+    notifications.show({
+      title: 'Error',
+      message: error.error,
+      color: 'red',
+      icon: <IconUserCircle size='1rem' />,
+    });
+  } else {
+    notifications.show({
+      title: `File ${data!.showOnProfile ? 'added to' : 'removed from'} profile`,
+      message: `${file.name} will ${data!.showOnProfile ? 'now' : 'no longer'} show on your public profile`,
+      color: 'blue',
+      icon: <IconUserCircle size='1rem' />,
     });
   }
 

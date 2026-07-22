@@ -1,5 +1,11 @@
 import RelativeDate from '@/components/RelativeDate';
-import { addMultipleToFolder, copyFile, deleteFile, downloadFile } from '@/components/file/actions';
+import {
+  addMultipleToFolder,
+  copyFile,
+  deleteFile,
+  downloadFile,
+  toggleShowOnProfile,
+} from '@/components/file/actions';
 import FolderComboboxOptions from '@/components/folders/FolderComboboxOptions';
 import { Response } from '@/lib/api/response';
 import { bytes } from '@/lib/bytes';
@@ -38,6 +44,7 @@ import {
   IconFile,
   IconStar,
   IconTrashFilled,
+  IconUserCircle,
 } from '@tabler/icons-react';
 import { DataTable } from 'mantine-datatable';
 import { parseAsInteger, useQueryState } from 'nuqs';
@@ -214,6 +221,7 @@ export default function FileTable({
     | 'type'
     | 'views'
     | 'favorite'
+    | 'showOnProfile'
   >('createdAt');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -349,6 +357,12 @@ export default function FileTable({
       sortable: true,
       title: 'Favorite?',
       render: (file: File) => (file.favorite ? <Text c='yellow'>Yes</Text> : 'No'),
+    },
+    {
+      accessor: 'showOnProfile',
+      sortable: true,
+      title: 'On profile?',
+      render: (file: File) => (file.showOnProfile ? <Text c='blue'>Yes</Text> : 'No'),
     },
     {
       accessor: 'views',
@@ -563,6 +577,20 @@ export default function FileTable({
                       <IconDownload size='1rem' />
                     </ActionIcon>
                   </Tooltip>
+
+                  {file.type?.startsWith('video/') && (
+                    <Tooltip label={file.showOnProfile ? 'Remove from profile' : 'Show on profile'}>
+                      <ActionIcon
+                        color={file.showOnProfile ? 'blue' : 'gray'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleShowOnProfile(file);
+                        }}
+                      >
+                        <IconUserCircle size='1rem' />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
 
                   <Tooltip label='Delete file'>
                     <ActionIcon

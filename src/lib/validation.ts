@@ -39,6 +39,7 @@ export const paginationQs = z.object({
       'type',
       'views',
       'favorite',
+      'showOnProfile',
     ])
     .optional()
     .default('createdAt'),

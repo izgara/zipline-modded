@@ -21,4 +21,8 @@ run(
     'client/ssr/view-url',
     'vite build --ssr ssr-view-url/server.tsx -m ssr-view-url --outDir ../../build/ssr --emptyOutDir=false',
   ),
+  step(
+    'client/ssr/profile',
+    'vite build --ssr ssr-profile/server.tsx -m ssr-profile --outDir ../../build/ssr --emptyOutDir=false',
+  ),
 );

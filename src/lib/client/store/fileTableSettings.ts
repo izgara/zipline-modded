@@ -2,7 +2,16 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 type Field =
-  'name' | 'originalName' | 'tags' | 'type' | 'size' | 'createdAt' | 'favorite' | 'views' | 'anonymous';
+  | 'name'
+  | 'originalName'
+  | 'tags'
+  | 'type'
+  | 'size'
+  | 'createdAt'
+  | 'favorite'
+  | 'showOnProfile'
+  | 'views'
+  | 'anonymous';
 
 const FIELDS: {
   property: Field;
@@ -16,6 +25,7 @@ const FIELDS: {
   { property: 'size', visible: true, title: 'Size' },
   { property: 'createdAt', visible: true, title: 'Created At' },
   { property: 'favorite', visible: true, title: 'Favorite' },
+  { property: 'showOnProfile', visible: false, title: 'On Profile' },
   { property: 'views', visible: true, title: 'Views' },
   { property: 'anonymous', visible: false, title: 'Anonymous?' },
 ];

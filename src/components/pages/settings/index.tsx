@@ -4,6 +4,7 @@ import { Group, SimpleGrid, Stack, Title } from '@mantine/core';
 import { lazy } from 'react';
 
 const SettingsAvatar = lazy(() => import('./parts/SettingsAvatar'));
+const SettingsProfile = lazy(() => import('./parts/SettingsProfile'));
 const SettingsDashboard = lazy(() => import('./parts/SettingsDashboard'));
 const SettingsFileView = lazy(() => import('./parts/SettingsFileView'));
 const SettingsGenerators = lazy(() => import('./parts/SettingsGenerators'));
@@ -31,6 +32,8 @@ export default function DashboardSettings() {
           <SettingsSessions />
           <SettingsDashboard />
         </Stack>
+
+        <SettingsProfile />
 
         <SettingsFileView />
 

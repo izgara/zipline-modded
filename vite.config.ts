@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => {
           main: path.resolve(__dirname, 'src/client/index.html'),
           'ssr-view': path.resolve(__dirname, 'src/client/ssr-view/index.html'),
           'ssr-view-url': path.resolve(__dirname, 'src/client/ssr-view-url/index.html'),
+          'ssr-profile': path.resolve(__dirname, 'src/client/ssr-profile/index.html'),
         },
         output: {
           format: 'esm',
