@@ -165,6 +165,11 @@ export default function ClipLightbox({
 }) {
   const { liked, likeCount, toggleLike } = useFileLike(file.id, file.likedByMe, file.likeCount);
   const clipboard = useClipboard();
+  const [aspectRatio, setAspectRatio] = useState<number | null>(null);
+
+  useEffect(() => {
+    setAspectRatio(null);
+  }, [file.id]);
 
   const index = files.findIndex((f) => f.id === file.id);
   const prev = index > 0 ? files[index - 1] : null;
@@ -254,7 +259,7 @@ export default function ClipLightbox({
         wrap='nowrap'
         align='stretch'
         gap={0}
-        style={{ width: 'min(1400px, 96vw)', height: '90vh', margin: 'auto' }}
+        style={{ width: 'min(1400px, 96vw)', maxHeight: '90vh', margin: 'auto' }}
         onClick={(event) => event.stopPropagation()}
       >
         <Box
@@ -266,8 +271,24 @@ export default function ClipLightbox({
             background: 'var(--mantine-color-body)',
           }}
         >
-          <Box style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-            <DashboardFileType key={file.id} file={file} show fullscreen muted={false} />
+          <Box
+            style={{
+              position: 'relative',
+              width: '100%',
+              aspectRatio: aspectRatio ? `${aspectRatio}` : '16 / 9',
+              background: 'black',
+              display: 'flex',
+              overflow: 'hidden',
+            }}
+          >
+            <DashboardFileType
+              key={file.id}
+              file={file}
+              show
+              fullscreen
+              muted={false}
+              onVideoMetadata={(width, height) => setAspectRatio(width / height)}
+            />
           </Box>
 
           <Stack gap={4} p='sm'>

@@ -75,6 +75,7 @@ export default function DashboardFileType({
   fullscreen,
   scrollParent,
   muted,
+  onVideoMetadata,
 }: {
   file: DbFile | File;
   show?: boolean;
@@ -84,6 +85,7 @@ export default function DashboardFileType({
   fullscreen?: boolean;
   scrollParent?: HTMLElement | null;
   muted?: boolean;
+  onVideoMetadata?: (width: number, height: number) => void;
 }) {
   const disableMediaPreview = useSettingsStore((state) => state.settings.disableMediaPreview);
   const mediaAutoMuted = useSettingsStore((state) => state.settings.mediaAutoMuted);
@@ -161,6 +163,11 @@ export default function DashboardFileType({
         muted={muted ?? mediaAutoMuted}
         controls
         src={fileUrl}
+        onLoadedMetadata={
+          onVideoMetadata
+            ? (event) => onVideoMetadata(event.currentTarget.videoWidth, event.currentTarget.videoHeight)
+            : undefined
+        }
         style={{
           cursor: 'pointer',
           objectFit: 'contain',
