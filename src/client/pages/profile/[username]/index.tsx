@@ -34,6 +34,20 @@ type SsrData = {
   host: string;
 };
 
+// useMantineTheme() requires a MantineProvider ancestor, which only exists on the
+// client (the server-side static render of this SSR app deliberately skips Root/
+// MantineProvider, see ssr-profile/routes.tsx). Isolating the hook in a component
+// that's only ever instantiated client-side keeps the server pass crash-free.
+function ThemedBackground({ children }: { children: React.ReactNode }) {
+  const theme = useMantineTheme() as unknown as ZiplineTheme;
+  return <Box style={{ backgroundColor: theme.mainBackgroundColor, minHeight: '100vh' }}>{children}</Box>;
+}
+
+function PageBackground({ children }: { children: React.ReactNode }) {
+  if (typeof window === 'undefined') return <Box mih='100vh'>{children}</Box>;
+  return <ThemedBackground>{children}</ThemedBackground>;
+}
+
 function EmptyState({ text }: { text: string }) {
   return (
     <Paper withBorder p='xl'>
@@ -61,7 +75,6 @@ function ClipGrid({ files, emptyText }: { files: File[]; emptyText: string }) {
 
 export default function ProfileUsername() {
   const data = useSsrData<SsrData>();
-  const theme = useMantineTheme() as unknown as ZiplineTheme;
   const { data: self } = useSWR<Response['/api/user']>('/api/user');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
@@ -104,7 +117,7 @@ export default function ProfileUsername() {
   const totalViews = files.reduce((sum, f) => sum + f.views, 0);
 
   return (
-    <Box style={{ backgroundColor: theme.mainBackgroundColor, minHeight: '100vh' }}>
+    <PageBackground>
       <Paper withBorder m='md' p='md' radius='md' maw={1100} mx='auto'>
         <Group justify='space-between' align='flex-start' mb='md'>
           <Group>
@@ -224,6 +237,6 @@ export default function ProfileUsername() {
           </Tabs.Panel>
         </Tabs>
       </Paper>
-    </Box>
+    </PageBackground>
   );
 }
