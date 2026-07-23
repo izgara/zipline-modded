@@ -22,7 +22,7 @@ export default typedPlugin(
       PATH,
       {
         schema: {
-          description: 'Fetch a specific tag by ID, ensuring it is owned by the authenticated user.',
+          description: 'Fetch a specific tag by ID. Tags are shared/global across all users.',
           params: paramsSchema,
           response: {
             200: tagSchema,
@@ -36,7 +36,6 @@ export default typedPlugin(
 
         const tag = await prisma.tag.findFirst({
           where: {
-            userId: req.user.id,
             id,
           },
           select: tagSelect,
@@ -51,7 +50,7 @@ export default typedPlugin(
       PATH,
       {
         schema: {
-          description: 'Delete a specific tag owned by the authenticated user.',
+          description: 'Delete a specific tag. Tags are shared/global across all users.',
           params: paramsSchema,
           response: {
             200: z.object({
@@ -67,7 +66,6 @@ export default typedPlugin(
 
         const tag = await prisma.tag.deleteMany({
           where: {
-            userId: req.user.id,
             id,
           },
         });
@@ -110,7 +108,6 @@ export default typedPlugin(
 
         const existingTag = await prisma.tag.findFirst({
           where: {
-            userId: req.user.id,
             id,
           },
         });

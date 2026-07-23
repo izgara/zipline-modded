@@ -40,9 +40,6 @@ export default typedPlugin(
         if (!canInteract(req.user.role, user.role)) throw new ApiError(9002);
 
         const tags = await prisma.tag.findMany({
-          where: {
-            userId: user.id,
-          },
           select: tagSelect,
         });
 

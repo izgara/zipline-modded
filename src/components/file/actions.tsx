@@ -13,11 +13,14 @@ import {
   IconFolderMinus,
   IconFolderOff,
   IconFolderPlus,
+  IconPencilOff,
   IconStar,
   IconStarFilled,
+  IconTagsOff,
   IconTrashFilled,
   IconTrashXFilled,
   IconUserCircle,
+  IconUsersGroup,
 } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 import { mutate } from 'swr';
@@ -137,6 +140,60 @@ export async function toggleShowOnProfile(file: File) {
   }
 
   mutateFiles();
+}
+
+export async function updateFileCaption(file: File, caption: string) {
+  const trimmed = caption.trim();
+
+  const { error } = await fetchApi<Response['/api/user/files/[id]']>(`/api/user/files/${file.id}`, 'PATCH', {
+    profileCaption: trimmed === '' ? null : trimmed,
+  });
+
+  if (error) {
+    notifications.show({
+      title: 'Error updating caption',
+      message: error.error,
+      color: 'red',
+      icon: <IconPencilOff size='1rem' />,
+    });
+  }
+
+  mutateFiles();
+}
+
+export async function updateFileTags(file: File, tagIds: string[]) {
+  const { error } = await fetchApi<Response['/api/user/files/[id]']>(`/api/user/files/${file.id}`, 'PATCH', {
+    tags: tagIds,
+  });
+
+  if (error) {
+    notifications.show({
+      title: 'Error updating tags',
+      message: error.error,
+      color: 'red',
+      icon: <IconTagsOff size='1rem' />,
+    });
+  }
+
+  mutateFiles();
+}
+
+export async function updateFileMentions(file: File, mentions: string[]) {
+  const { error } = await fetchApi<Response['/api/user/files/[id]']>(`/api/user/files/${file.id}`, 'PATCH', {
+    mentions,
+  });
+
+  if (error) {
+    notifications.show({
+      title: 'Error updating mentions',
+      message: error.error,
+      color: 'red',
+      icon: <IconUsersGroup size='1rem' />,
+    });
+  }
+
+  mutateFiles();
+  mutate('/api/user/mentions');
 }
 
 export async function createFolderAndAdd(file: File, folderName: string | null) {
