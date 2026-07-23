@@ -81,18 +81,28 @@ function ClipGrid({
   navigationList,
   emptyText,
   onOpenClip,
+  isOwner,
+  onUpdateFile,
 }: {
   files: ProfileFile[];
   navigationList?: ProfileFile[];
   emptyText: string;
   onOpenClip: (file: ProfileFile, list: ProfileFile[]) => void;
+  isOwner: boolean;
+  onUpdateFile: (fileId: string, patch: Partial<ProfileFile>) => void;
 }) {
   if (files.length === 0) return <EmptyState text={emptyText} />;
 
   return (
     <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
       {files.map((file) => (
-        <ProfileClipCard key={file.id} file={file} onOpen={() => onOpenClip(file, navigationList ?? files)} />
+        <ProfileClipCard
+          key={file.id}
+          file={file}
+          onOpen={() => onOpenClip(file, navigationList ?? files)}
+          isOwner={isOwner}
+          onUpdate={onUpdateFile}
+        />
       ))}
     </SimpleGrid>
   );
@@ -108,7 +118,15 @@ export default function ProfileUsername() {
   const [favoritesPage, setFavoritesPage] = useState(1);
   const [lightbox, setLightbox] = useState<{ file: ProfileFile; list: ProfileFile[] } | null>(null);
 
-  const files = data?.files ?? [];
+  const [files, setFiles] = useState<ProfileFile[]>(() => data?.files ?? []);
+
+  const updateFile = (fileId: string, patch: Partial<ProfileFile> & { showOnProfile?: boolean }) => {
+    setFiles((current) =>
+      patch.showOnProfile === false
+        ? current.filter((f) => f.id !== fileId)
+        : current.map((f) => (f.id === fileId ? { ...f, ...patch } : f)),
+    );
+  };
 
   useEffect(() => {
     if (!data?.openClipId) return;
@@ -302,6 +320,8 @@ export default function ProfileUsername() {
                       : 'No clips have been shared yet.'
                 }
                 onOpenClip={(file, list) => setLightbox({ file, list })}
+                isOwner={isOwner}
+                onUpdateFile={updateFile}
               />
 
               {homePageCount > 1 && (
@@ -320,6 +340,8 @@ export default function ProfileUsername() {
                   navigationList={favoriteFiles}
                   emptyText='No favorited clips yet.'
                   onOpenClip={(file, list) => setLightbox({ file, list })}
+                  isOwner={isOwner}
+                  onUpdateFile={updateFile}
                 />
 
                 {favoritesPageCount > 1 && (
