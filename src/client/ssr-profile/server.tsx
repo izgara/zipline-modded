@@ -38,7 +38,7 @@ export async function render(
   if (!libConfig) await reloadSettings();
 
   const user = await prisma.user.findFirst({
-    where: { username },
+    where: { username: { equals: username, mode: 'insensitive' } },
     select: limitedUserSelect,
   });
   if (!user) return { html: 'Not Found', meta: '', status: 404 };

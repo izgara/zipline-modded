@@ -19,7 +19,7 @@ export default typedPlugin(
       },
       async (req, res) => {
         const user = await prisma.user.findFirst({
-          where: { username: req.params.username },
+          where: { username: { equals: req.params.username, mode: 'insensitive' } },
           select: { avatar: true },
         });
 
