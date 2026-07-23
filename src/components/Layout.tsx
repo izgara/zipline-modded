@@ -44,6 +44,7 @@ import {
   IconStopwatch,
   IconTags,
   IconUpload,
+  IconUserCircle,
   IconUsersGroup,
 } from '@tabler/icons-react';
 import { useState } from 'react';
@@ -356,6 +357,16 @@ export default function Layout() {
                   {user?.username}
                   {isAdministrator(user?.role) ? ' (Administrator)' : ''}
                 </Menu.Label>
+
+                <Menu.Item
+                  leftSection={<IconUserCircle size='1rem' />}
+                  component={Link}
+                  to={`/profile/${user?.username}`}
+                  target='_blank'
+                >
+                  View Profile
+                </Menu.Item>
+                <Menu.Divider />
 
                 <Menu.Item leftSection={<IconClipboardCopy size='1rem' />} onClick={copyToken}>
                   Copy token
