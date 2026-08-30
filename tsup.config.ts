@@ -12,10 +12,9 @@ export default defineConfig(async (_) => {
       clean: true,
       sourcemap: true,
       entry: await glob('./src/**/*.ts', {
-        ignore: ['./src/components/**/*.ts', './src/client/**/*.(ts|tsx|html)'],
+        ignore: ['./src/**/*.d.ts', './src/components/**/*.ts', './src/client/**/*.(ts|tsx|html)'],
       }),
       shims: false,
-      esbuildPlugins: [],
       outDir: 'build',
       bundle: false,
       onSuccess: async () => {

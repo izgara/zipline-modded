@@ -8,6 +8,7 @@ import { MAX_SAFE_TIMEOUT_MS, MIME_REGEX } from '@/lib/config/validate';
 import { prisma } from '@/lib/db';
 import { log } from '@/lib/logger';
 import { secondlyRatelimit } from '@/lib/ratelimits';
+import { RESERVED_ROUTES } from '@/lib/reservedRoutes';
 import { readThemes } from '@/lib/theme/file';
 import { zStringTrimmed } from '@/lib/validation';
 import { administratorMiddleware } from '@/server/middleware/administrator';
@@ -26,20 +27,6 @@ export type ApiServerSettingsWebResponse = {
   config: ReturnType<typeof safeConfig>;
   codeMap: { ext: string; mime: string; name: string }[];
 };
-export const reservedRoutes = [
-  '/dashboard',
-  '/auth',
-  '/api',
-  '/raw',
-  '/r',
-  '/invite',
-  '/view',
-  '/profile',
-  '/robots.txt',
-  '/manifest.json',
-  '/favicon.ico',
-];
-
 const jsonTransform = (value: any, ctx: z.RefinementCtx) => {
   if (typeof value !== 'string') return value;
   try {
@@ -99,18 +86,20 @@ export default typedPlugin(
       {
         schema: {
           description:
-            'Fetch the full Zipline server settings row along with a list of configuration keys that were overridden at runtime (admin only).',
+            'Fetch the full Zipline server settings row along with a list of configuration keys that were overridden at runtime.',
           response: {
             200: z.object({
               settings: z.custom<Settings>(),
               tampered: z.array(z.string()),
             }),
           },
-          tags: ['auth', 'admin'],
+          tags: ['auth', 'superadmin'],
         },
         preHandler: [userMiddleware, administratorMiddleware],
       },
-      async (_, res) => {
+      async (req, res) => {
+        if (req.user.role !== 'SUPERADMIN') throw new ApiError(3015);
+
         const settings = await prisma.zipline.findFirst({
           omit: {
             createdAt: true,
@@ -130,18 +119,19 @@ export default typedPlugin(
       PATH,
       {
         schema: {
-          description:
-            'Partially update Zipline server settings using a validated subset of configuration keys (admin only).',
+          description: 'Partially update Zipline server settings.',
           body: z.custom<Partial<Settings>>(),
           response: {
             200: z.custom<ApiServerSettingsResponse>(),
           },
-          tags: ['auth', 'admin'],
+          tags: ['auth', 'superadmin'],
         },
         preHandler: [userMiddleware, administratorMiddleware],
         ...secondlyRatelimit(1),
       },
       async (req, res) => {
+        if (req.user.role !== 'SUPERADMIN') throw new ApiError(3015);
+
         const settings = await prisma.zipline.findFirst();
         if (!settings) throw new ApiError(4010);
 
@@ -178,7 +168,7 @@ export default typedPlugin(
               .string()
               .startsWith('/')
               .refine(
-                (value) => !reservedRoutes.some((route) => value.startsWith(route)),
+                (value) => !RESERVED_ROUTES.some((route) => value.startsWith(route)),
                 'Provided route is reserved',
               ),
             filesLength: z.number().min(1).max(64),
@@ -211,7 +201,7 @@ export default typedPlugin(
               .string()
               .startsWith('/')
               .refine(
-                (value) => !reservedRoutes.some((route) => value.startsWith(route)),
+                (value) => !RESERVED_ROUTES.some((route) => value.startsWith(route)),
                 'Provided route is reserved',
               ),
             urlsLength: z.number().min(1).max(64),
@@ -239,7 +229,6 @@ export default typedPlugin(
             featuresMetricsShowUserSpecific: z.boolean(),
 
             featuresVersionChecking: z.boolean(),
-            featuresVersionAPI: z.url(),
 
             invitesEnabled: z.boolean(),
             invitesLength: z.number().min(1).max(64),
@@ -390,7 +379,7 @@ export default typedPlugin(
                 z
                   .string()
                   .regex(
-                    /^[a-zA-Z0-9][a-zA-Z0-9-_]{0,61}[a-zA-Z0-9]{0,1}\.([a-zA-Z]{1,6}|[a-zA-Z0-9-]{1,30}\.[a-zA-Z]{2,30})$/gi,
+                    /^(?:[a-zA-Z0-9_](?:[a-zA-Z0-9_-]{0,61}[a-zA-Z0-9_])?\.)+[a-zA-Z]{2,63}$/i,
                     'Invalid Domain',
                   ),
               ),

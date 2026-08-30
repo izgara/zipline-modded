@@ -120,7 +120,8 @@ export default function UploadOptionsButton({ folder, numFiles }: { folder?: str
       if (!maxMs || isNaN(Number(maxMs))) return opts;
 
       return opts.filter((o) => {
-        if (o.value === 'default' || o.value === 'never' || o.value === '_') return true;
+        if (o.value === 'never') return false;
+        if (o.value === 'default' || o.value === '_') return true;
         const val = String(o.value);
         const parsed = (ms as unknown as (v: string) => number)(val);
 
@@ -440,6 +441,25 @@ export default function UploadOptionsButton({ folder, numFiles }: { folder?: str
             checked={options.addOriginalName ?? false}
             onChange={(event) => setOption('addOriginalName', event.currentTarget.checked ?? false)}
           />
+
+          {config.files.extensionlessUrls ? (
+            <Switch
+              label={
+                <>
+                  Extensionless URL{' '}
+                  {options.extensionless ? (
+                    <Badge variant='outline' size='xs'>
+                      saved
+                    </Badge>
+                  ) : null}
+                </>
+              }
+              description='Remove the file extension from the returned URL. The file can still be accessed with its extension. THis option will only work if the server is configured to allow extensionless URLs.'
+              checked={options.extensionless ?? false}
+              onChange={(event) => setOption('extensionless', event.currentTarget.checked ?? false)}
+              disabled={!config.files.extensionlessUrls}
+            />
+          ) : null}
         </Stack>
 
         <Group justify='right' my='sm' gap='sm'>

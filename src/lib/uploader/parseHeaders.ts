@@ -1,45 +1,8 @@
-import ms from 'ms';
+import ms, { type StringValue } from 'ms';
 import { checkOutput, COMPRESS_TYPES, CompressType } from '../compress';
-import { config } from '../config';
 import { Config } from '../config/validate';
 import { sanitizeExtension } from '../fs';
 import { ApiError } from '../api/errors';
-
-// from ms@3.0.0-canary.1
-type Unit =
-  | 'Years'
-  | 'Year'
-  | 'Yrs'
-  | 'Yr'
-  | 'Y'
-  | 'Weeks'
-  | 'Week'
-  | 'W'
-  | 'Days'
-  | 'Day'
-  | 'D'
-  | 'Hours'
-  | 'Hour'
-  | 'Hrs'
-  | 'Hr'
-  | 'H'
-  | 'Minutes'
-  | 'Minute'
-  | 'Mins'
-  | 'Min'
-  | 'M'
-  | 'Seconds'
-  | 'Second'
-  | 'Secs'
-  | 'Sec'
-  | 's'
-  | 'Milliseconds'
-  | 'Millisecond'
-  | 'Msecs'
-  | 'Msec'
-  | 'Ms';
-type UnitAnyCase = Unit | Uppercase<Unit> | Lowercase<Unit>;
-type StringValue = `${number}` | `${number}${UnitAnyCase}` | `${number} ${UnitAnyCase}`;
 
 type StringBoolean = 'true' | 'false';
 
@@ -53,6 +16,7 @@ export type UploadHeaders = {
   'x-zipline-max-views'?: string;
   'x-zipline-no-json'?: StringBoolean;
   'x-zipline-original-name'?: StringBoolean;
+  'x-zipline-extensionless'?: StringBoolean;
 
   'x-zipline-folder'?: string;
 
@@ -77,6 +41,7 @@ export type UploadOptions = {
   maxViews?: number;
   noJson?: boolean;
   addOriginalName?: boolean;
+  extensionless?: boolean;
 
   imageCompression?: {
     type?: CompressType;
@@ -157,7 +122,14 @@ export function parseHeaders(headers: UploadHeaders, fileConfig: Config['files']
 
   if (headers['x-zipline-deletes-at']) {
     if (headers['x-zipline-deletes-at'].toLowerCase() === 'never') {
-      response.deletesAt = 'never' as any;
+      if (fileConfig.maxExpiration) {
+        throwHeaderError(
+          'x-zipline-deletes-at',
+          `Expiry exceeds maximum allowed expiration of ${fileConfig.maxExpiration}`,
+        );
+      }
+
+      response.deletesAt = 'never';
     } else {
       const expiresAt = parseExpiry(headers['x-zipline-deletes-at']);
       if (!expiresAt) throwHeaderError('x-zipline-deletes-at', 'Invalid expiry date');
@@ -210,7 +182,6 @@ export function parseHeaders(headers: UploadHeaders, fileConfig: Config['files']
 
     if (imageCompressionPercent) {
       const percent = parsePercent('x-zipline-image-compression-percent', imageCompressionPercent);
-      if (typeof percent === 'object') return percent;
 
       response.imageCompression = {
         type: imageCompressionType,
@@ -219,10 +190,9 @@ export function parseHeaders(headers: UploadHeaders, fileConfig: Config['files']
     }
   } else if (imageCompressionPercent) {
     const percent = parsePercent('x-zipline-image-compression-percent', imageCompressionPercent);
-    if (typeof percent === 'object') return percent;
 
     response.imageCompression = {
-      type: config.files.defaultCompressionFormat,
+      type: fileConfig.defaultCompressionFormat,
       percent,
     };
   }
@@ -243,6 +213,9 @@ export function parseHeaders(headers: UploadHeaders, fileConfig: Config['files']
 
   const addOriginalName = headers['x-zipline-original-name'];
   if (addOriginalName) response.addOriginalName = addOriginalName === 'true';
+
+  const extensionless = headers['x-zipline-extensionless'];
+  if (extensionless) response.extensionless = extensionless === 'true';
 
   const folder = headers['x-zipline-folder'];
   if (folder) response.folder = folder;

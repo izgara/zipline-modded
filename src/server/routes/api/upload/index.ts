@@ -1,5 +1,12 @@
 import { ApiError } from '@/lib/api/errors';
-import { checkQuota, getDomain, getExtension, getFilename, getMimetype } from '@/lib/api/upload';
+import {
+  checkQuota,
+  enforceMimetypePolicy,
+  getDomain,
+  getExtension,
+  getFilename,
+  resolveUploadMimetype,
+} from '@/lib/api/upload';
 import { bytes } from '@/lib/bytes';
 import { COMPRESS_TYPES, compressFile, CompressResult } from '@/lib/compress';
 import { config } from '@/lib/config';
@@ -146,8 +153,18 @@ export default typedPlugin(
 
         logger.debug('uploading files', { files: files.map((x) => x.filename) });
 
-        // todo: maybe make configurable?
-        const prepared = await mapConcurrent(files, 4, async (file, i) => {
+        const reservedNames = new Set<string>();
+        const format = options.format || config.files.defaultFormat;
+        const filesBefore: {
+          file: SavedMultipartFile;
+          fileName: string;
+          extension: string;
+          mimetype: string;
+          originalName?: string;
+        }[] = [];
+
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
           const extension = getExtension(file.filename, options.overrides?.extension);
 
           if (config.files.disabledExtensions.includes(extension))
@@ -159,26 +176,52 @@ export default typedPlugin(
             );
 
           // determine mimetype
-          const { assumed, ...mimeRes } = await getMimetype(file.mimetype, extension);
-          let mimetype = mimeRes.mimetype;
+          const { assumed, mimetype } = await resolveUploadMimetype(file.mimetype, extension, `file[${i}]`);
 
-          if (config.files.assumeMimetypes) {
-            response.assumedMimetypes![i] = assumed;
+          if (config.files.assumeMimetypes) response.assumedMimetypes![i] = assumed;
 
-            if (!assumed) {
-              logger.warn(`file[${i}]: mimetype ${file.mimetype} was not recognized`);
+          const cmpExt =
+            mimetype.startsWith('image/') && options.imageCompression
+              ? `.${options.imageCompression.type === 'jpeg' ? 'jpg' : (options.imageCompression.type ?? 'jpg')}`
+              : null;
+          let fileName: string;
+          try {
+            fileName = await getFilename(
+              format,
+              file.filename,
+              extension,
+              options.overrides?.filename,
+              reservedNames,
+              cmpExt && cmpExt !== extension ? [cmpExt] : [],
+            );
+          } catch (error) {
+            throw new ApiError(1009, `file[${i}]: ${String(error)}`);
+          }
 
-              throw new ApiError(
-                1010,
-                `file[${i}]: mimetype ${file.mimetype} was not recognized, supply a valid mimetype`,
-              );
+          let originalName: string | undefined;
+          if (options.addOriginalName) {
+            try {
+              originalName = sanitizeFilename(file.filename) ?? undefined;
+            } catch {
+              originalName = undefined;
             }
+
+            if (!originalName)
+              throw new ApiError(1008, `file[${i}]: Invalid characters in original filename`);
           }
 
-          if (config.files.disabledTypes.includes(mimetype.trim().toLowerCase())) {
-            if (config.files.disabledTypesDefault) mimetype = config.files.disabledTypesDefault;
-            else throw new ApiError(1065, `file[${i}]: File type ${mimetype} is not allowed`);
-          }
+          filesBefore.push({
+            file,
+            fileName,
+            extension,
+            mimetype,
+            originalName,
+          });
+        }
+
+        // todo: maybe make configurable?
+        const prepared = await mapConcurrent(filesBefore, 4, async (item, i) => {
+          const { file, fileName, extension, mimetype, originalName } = item;
 
           // compress the image if requested
           let compressed;
@@ -205,35 +248,26 @@ export default typedPlugin(
             removedGps = removed;
           }
 
+          const storedMimetype = enforceMimetypePolicy(
+            compressed?.mimetype ?? mimetype,
+            `file[${i}]`,
+          ).mimetype;
+
           return {
             file,
+            fileName,
             extension: compressed ? `.${compressed.ext}` : extension,
-            mimetype: compressed?.mimetype ?? mimetype,
+            mimetype: storedMimetype,
             size: compressed?.buffer.length ?? file.file.bytesRead,
             compressed,
             removedGps,
+            originalName,
           };
         });
 
-        const reservedNames = new Set<string>();
-        const format = options.format || config.files.defaultFormat;
-        const named: ((typeof prepared)[number] & { fileName: string })[] = [];
-        for (let i = 0; i < prepared.length; i++) {
-          const item = prepared[i];
-          const nameResult = await getFilename(
-            format,
-            item.file.filename,
-            item.extension,
-            options.overrides?.filename,
-            reservedNames,
-          );
-          if ('error' in nameResult) throw new ApiError(1009, `file[${i}]: ${nameResult.error}`);
-
-          named.push({ ...item, fileName: nameResult.fileName });
-        }
-
-        response.files = await mapConcurrent(named, 4, async (item, i) => {
-          const { file, fileName, extension, mimetype, size, compressed, removedGps } = item;
+        const password = options.password ? await hashPassword(options.password) : undefined;
+        const uploads = prepared.map((item) => {
+          const { file, fileName, extension, mimetype, size, compressed, removedGps, originalName } = item;
 
           const data: Prisma.FileCreateInput = {
             name: `${fileName}${extension}`,
@@ -245,21 +279,45 @@ export default typedPlugin(
           if (!req.user && folder) data.anonymous = true;
 
           if (options.maxViews) data.maxViews = options.maxViews;
-          if (options.password) data.password = await hashPassword(options.password);
+          if (password) data.password = password;
           if (folder) data.Folder = { connect: { id: folder.id } };
-          if (options.addOriginalName) {
-            const sanitizedOG = sanitizeFilename(file.filename);
-            if (!sanitizedOG) throw new ApiError(1008, `file[${i}]: Invalid characters in original filename`);
-
-            data.originalName = sanitizedOG;
-          }
+          if (originalName) data.originalName = originalName;
 
           data.deletesAt = options.deletesAt && options.deletesAt !== 'never' ? options.deletesAt : null;
 
-          const fileUpload = await prisma.file.create({
-            data,
-            select: fileSelect,
-          });
+          return { compressed, data, extension, file, removedGps, size };
+        });
+
+        const fileUploads = await prisma.$transaction(async (tx) => {
+          if (quotaUser?.quota) {
+            await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${quotaUser.id} FOR UPDATE`;
+
+            const quotaCheck = await checkQuota(
+              quotaUser,
+              uploads.reduce((total, upload) => total + upload.size, 0),
+              uploads.length,
+              tx,
+            );
+            if (quotaCheck !== true)
+              throw new ApiError(5002, typeof quotaCheck === 'string' ? quotaCheck : undefined);
+          }
+
+          const created = [];
+          for (const upload of uploads) {
+            created.push(
+              await tx.file.create({
+                data: upload.data,
+                select: fileSelect,
+              }),
+            );
+          }
+
+          return created;
+        });
+
+        response.files = await mapConcurrent(uploads, 4, async (upload, uploadIndex) => {
+          const { compressed, extension, file, removedGps } = upload;
+          const fileUpload = fileUploads[uploadIndex];
 
           const storageData = compressed?.buffer ?? file.filepath;
           await datasource.put(fileUpload.name, storageData, {
@@ -269,7 +327,12 @@ export default typedPlugin(
             req.tmpUploads = req.tmpUploads.filter((path) => path !== storageData);
           }
 
-          const responseUrl = `${domain}${config.files.route === '/' || config.files.route === '' ? '' : `${config.files.route}`}/${fileUpload.name}`;
+          const urlPath =
+            options.extensionless && config.files.extensionlessUrls
+              ? fileUpload.name.slice(0, -extension.length)
+              : fileUpload.name;
+
+          const responseUrl = `${domain}${config.files.route === '/' || config.files.route === '' ? '' : `${config.files.route}`}/${urlPath}`;
 
           const compressedResponse = compressed
             ? { mimetype: compressed.mimetype, ext: compressed.ext, failed: compressed.failed }
@@ -289,7 +352,7 @@ export default typedPlugin(
             { size: bytes(fileUpload.size), ip: req.ip },
           );
 
-          await onUpload(config, {
+          onUpload(config, {
             user: req.user ?? {
               id: 'anonymous',
               username: 'anonymous',
@@ -321,9 +384,7 @@ export default typedPlugin(
           const fileIds = response.files.map((x) => x.id);
 
           const thumbnailWorkers = server.tasks.workersBy('thumbnail');
-          if (!thumbnailWorkers.length) return;
-
-          runThumbnailWorkers(thumbnailWorkers, fileIds);
+          if (thumbnailWorkers.length) runThumbnailWorkers(thumbnailWorkers, fileIds);
         }
 
         return res.send(response);

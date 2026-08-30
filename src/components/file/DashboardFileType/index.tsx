@@ -36,10 +36,24 @@ export function Placeholder({ text, Icon, ...props }: { text: string; Icon: Icon
   );
 }
 
-function FullscreenSizedMedia({ children }: { children: React.ReactNode }) {
+// Absolute-fill within a relatively-positioned flex item - unlike percentage
+// heights through nested flex containers (which silently fail to resolve in
+// some ancestor chains), inset: 0 on an absolutely positioned element always
+// sizes it to the containing block's box, regardless of parent flex quirks.
+function FullscreenSizedMedia({
+  children,
+  onBackdropClick,
+}: {
+  children: React.ReactNode;
+  onBackdropClick?: () => void;
+}) {
   return (
     <Box
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onBackdropClick?.();
+      }}
       style={{
+        position: 'relative',
         flex: 1,
         alignSelf: 'stretch',
         minHeight: 0,
@@ -49,18 +63,6 @@ function FullscreenSizedMedia({ children }: { children: React.ReactNode }) {
         justifyContent: 'center',
       }}
     >
-      {children}
-    </Box>
-  );
-}
-
-// Absolute-fill within a relatively-positioned flex item - unlike percentage
-// heights through nested flex containers (which silently fail to resolve in
-// some ancestor chains), inset: 0 on an absolutely positioned element always
-// sizes it to the containing block's box, regardless of parent flex quirks.
-function FullscreenVideoContainer({ children }: { children: React.ReactNode }) {
-  return (
-    <Box style={{ position: 'relative', flex: 1, alignSelf: 'stretch', minHeight: 0, width: '100%' }}>
       {children}
     </Box>
   );
@@ -76,6 +78,7 @@ export default function DashboardFileType({
   scrollParent,
   muted,
   onVideoMetadata,
+  onFullscreenBackdropClick,
 }: {
   file: DbFile | File;
   show?: boolean;
@@ -86,6 +89,7 @@ export default function DashboardFileType({
   scrollParent?: HTMLElement | null;
   muted?: boolean;
   onVideoMetadata?: (width: number, height: number) => void;
+  onFullscreenBackdropClick?: () => void;
 }) {
   const disableMediaPreview = useSettingsStore((state) => state.settings.disableMediaPreview);
   const mediaAutoMuted = useSettingsStore((state) => state.settings.mediaAutoMuted);
@@ -178,7 +182,11 @@ export default function DashboardFileType({
       />
     );
 
-    return fullscreen ? <FullscreenVideoContainer>{video}</FullscreenVideoContainer> : video;
+    return fullscreen ? (
+      <FullscreenSizedMedia onBackdropClick={onFullscreenBackdropClick}>{video}</FullscreenSizedMedia>
+    ) : (
+      video
+    );
   }
 
   if (type === 'image') {
@@ -207,7 +215,11 @@ export default function DashboardFileType({
 
     return (
       <>
-        {fullscreen ? <FullscreenSizedMedia>{image}</FullscreenSizedMedia> : <Center>{image}</Center>}
+        {fullscreen ? (
+          <FullscreenSizedMedia onBackdropClick={onFullscreenBackdropClick}>{image}</FullscreenSizedMedia>
+        ) : (
+          <Center>{image}</Center>
+        )}
         {allowZoom && zoomOpen && (
           <FileZoomModal setOpen={setZoomOpen}>
             <MantineImage

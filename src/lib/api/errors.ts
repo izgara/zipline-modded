@@ -66,6 +66,8 @@ export const API_ERRORS = {
   1065: 'Invalid MIME type',
   1066: 'Current password is incorrect',
   1067: 'Current password is required to set a new password',
+  1068: "Couldn't find current password for this account",
+  1069: 'TOTP is already enabled',
 
   // 2xxx, session errors
   2000: 'Invalid login session',
@@ -117,7 +119,7 @@ export const API_ERRORS = {
 
   // 6xxx, internal errors
   6000: 'Failed to delete invite',
-  6001: 'Failed to fetch version details',
+  6001: 'Failed to check for updates',
   6002: 'Failed to rename file in datasource',
   6003: 'There was an error during a healthcheck',
   6004: 'Failed to fetch OAuth access token',

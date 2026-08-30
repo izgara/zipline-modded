@@ -46,15 +46,6 @@ export async function findFileByName<TResult>(
   return query({ name: { startsWith: `${name}.` } }, { createdAt: 'desc' });
 }
 
-export function cleanFile(file: File) {
-  file.password = !!file.password;
-  if (file.tags) cleanTags(file.tags);
-
-  file.url = formatRootUrl(config.files.route, file.name);
-
-  return file;
-}
-
 export function cleanFiles(files: File[], stringifyDates = false) {
   for (let i = 0; i !== files.length; ++i) {
     const file = files[i];

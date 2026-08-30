@@ -544,7 +544,13 @@ export default function FileViewer({
         >
           {open && file ? (
             <Box
-              onClick={(e) => e.stopPropagation()}
+              onClick={(event) => {
+                if (event.target === event.currentTarget) {
+                  setOpen(false);
+                } else {
+                  event.stopPropagation();
+                }
+              }}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -568,6 +574,7 @@ export default function FileViewer({
                 allowZoom={false}
                 scrollParent={scrollParent}
                 muted={false}
+                onFullscreenBackdropClick={() => setOpen(false)}
               />
 
               {sequenced && fileNavButtons && file && (

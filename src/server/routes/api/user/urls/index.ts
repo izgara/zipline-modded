@@ -5,12 +5,12 @@ import { prisma } from '@/lib/db';
 import { cleanUrlPasswords, Url, urlSchema } from '@/lib/db/models/url';
 import { log } from '@/lib/logger';
 import { randomCharacters } from '@/lib/random';
+import { RESERVED_ROUTES } from '@/lib/reservedRoutes';
 import { zStringTrimmed } from '@/lib/validation';
 import { onShorten } from '@/lib/webhooks';
 import { userMiddleware } from '@/server/middleware/user';
 import typedPlugin from '@/server/typedPlugin';
 import { z } from 'zod';
-import { reservedRoutes } from '../../server/settings';
 
 export type ApiUserUrlsResponse =
   | Url[]
@@ -39,7 +39,7 @@ export default typedPlugin(
               .refine((str) => !str.startsWith('/'), 'Vanity cannot start with a slash.')
               .refine(
                 (str) =>
-                  !reservedRoutes.some((route) => {
+                  !RESERVED_ROUTES.some((route) => {
                     const nStr = `/${str}`.toLowerCase();
                     const nRoute = route.toLowerCase();
 
@@ -76,17 +76,6 @@ export default typedPlugin(
         const { vanity, destination, enabled } = req.body;
         const noJson = req.headers['x-zipline-no-json'];
 
-        const countUrls = await prisma.url.count({
-          where: {
-            userId: req.user.id,
-          },
-        });
-        if (req.user.quota && req.user.quota.maxUrls && countUrls + 1 > req.user.quota.maxUrls)
-          throw new ApiError(
-            3012,
-            `Shortening this URL would exceed your quota of ${req.user.quota.maxUrls} URLs.`,
-          );
-
         let returnDomain;
         const headerDomain = req.headers['x-zipline-domain'];
         if (headerDomain) {
@@ -116,19 +105,32 @@ export default typedPlugin(
           existingCode = await prisma.url.findFirst({ where: { code } });
         } while (existingCode);
 
-        const url = await prisma.url.create({
-          data: {
-            userId: req.user.id,
-            destination: destination,
-            code,
-            ...(vanity && { vanity: vanity }),
-            ...(maxViews && { maxViews: maxViews }),
-            ...(password && { password: password }),
-            ...(enabled !== undefined && { enabled: enabled }),
-          },
-          omit: {
-            password: true,
-          },
+        const url = await prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${req.user.id} FOR UPDATE`;
+
+          const countUrls = await tx.url.count({
+            where: { userId: req.user.id },
+          });
+          if (req.user.quota?.maxUrls && countUrls + 1 > req.user.quota.maxUrls)
+            throw new ApiError(
+              3012,
+              `Shortening this URL would exceed your quota of ${req.user.quota.maxUrls} URLs.`,
+            );
+
+          return tx.url.create({
+            data: {
+              userId: req.user.id,
+              destination: destination,
+              code,
+              ...(vanity && { vanity: vanity }),
+              ...(maxViews && { maxViews: maxViews }),
+              ...(password && { password: password }),
+              ...(enabled !== undefined && { enabled: enabled }),
+            },
+            omit: {
+              password: true,
+            },
+          });
         });
 
         let domain;
