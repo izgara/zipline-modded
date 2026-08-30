@@ -5,7 +5,7 @@
 
 A fork of [Zipline](https://github.com/diced/zipline) — the next generation ShareX / file upload server — with an added **public profile page** feature for showcasing and sharing video clips, Medal.tv-style.
 
-Based on **Zipline v4.6.5**. Original project by [diced](https://github.com/diced) and contributors, licensed [MIT](LICENSE).
+Based on **Zipline v4.7.0**. Original project by [diced](https://github.com/diced) and contributors, licensed [MIT](LICENSE).
 
 </div>
 
@@ -336,7 +336,7 @@ pnpm validate
 
 # Changelog
 
-All notable changes made in this fork, on top of Zipline v4.6.5. Dates are in `YYYY-MM-DD`.
+All notable changes made in this fork, on top of Zipline v4.7.0. Dates are in `YYYY-MM-DD`.
 
 ## 2026-07-23
 
