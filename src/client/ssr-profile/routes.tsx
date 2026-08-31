@@ -5,7 +5,7 @@ import { Config } from '@/lib/config/validate';
 
 export const createRoutes = (themes?: ZiplineTheme[], defaultTheme?: Config['website']['theme']) => [
   {
-    path: '/profile',
+    path: '/',
     Component:
       typeof window === 'undefined' ? undefined : () => <Root themes={themes} defaultTheme={defaultTheme} />,
     children: [

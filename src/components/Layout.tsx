@@ -361,7 +361,7 @@ export default function Layout() {
                 <Menu.Item
                   leftSection={<IconUserCircle size='1rem' />}
                   component={Link}
-                  to={`/profile/${user?.username}`}
+                  to={`/${user?.username}`}
                   target='_blank'
                 >
                   View Profile

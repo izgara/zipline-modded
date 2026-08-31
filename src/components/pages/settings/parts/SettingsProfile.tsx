@@ -12,7 +12,7 @@ export default function SettingsProfile() {
 
   if (!user) return null;
 
-  const profileUrl = getDomain(`/profile/${user.username}`);
+  const profileUrl = getDomain(`/${user.username}`);
 
   const copyLink = () => {
     clipboard.copy(profileUrl);

@@ -22,8 +22,10 @@ export async function registerRoutes(server: FastifyInstance, mode: string) {
     return res.ssr('view-url');
   });
 
-  server.get<{ Params: { username: string } }>('/profile/:username', async (_req, res) => {
-    return res.ssr('profile');
+  // Old profile path, kept as a permanent redirect so links shared before the
+  // move to root-level usernames keep working.
+  server.get<{ Params: { username: string } }>('/profile/:username', async (req, res) => {
+    return res.redirect(`/${req.params.username}`, 301);
   });
 
   if (config.files.route === '/' && config.urls.route === '/') {
@@ -58,6 +60,24 @@ export async function registerRoutes(server: FastifyInstance, mode: string) {
     server.serveIndex('/auth*');
     server.serveIndex('/folder*');
   }
+
+  // Public profiles live at the root: /<username>. Fastify matches static segments
+  // (/dashboard, /auth, /api, /u, /go, /robots.txt, ...) before this parametric
+  // route, and it only matches a single segment so /assets/* is unaffected.
+  // Unknown names call notFound so they fall through to the normal 404 page.
+  server.get<{ Params: { username: string } }>('/:username', async (req, res) => {
+    const { username } = req.params;
+    if (!username) return res.callNotFound();
+
+    const user = await prisma.user.findFirst({
+      where: { username: { equals: username, mode: 'insensitive' } },
+      select: { id: true },
+    });
+
+    if (!user) return res.callNotFound();
+
+    return res.ssr('profile');
+  });
 
   server.get('/', (_, res) => res.redirect('/dashboard', 301));
 }
