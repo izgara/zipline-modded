@@ -1,4 +1,5 @@
 import { ApiError } from '@/lib/api/errors';
+import { isReservedUsername } from '@/lib/reservedRoutes';
 import { config } from '@/lib/config';
 import { createToken, hashPassword } from '@/lib/crypto';
 import { prisma } from '@/lib/db';
@@ -79,6 +80,7 @@ export default typedPlugin(
       },
       async (req, res) => {
         const { username, password, avatar, role } = req.body;
+        if (isReservedUsername(username, config.files.route, config.urls.route)) throw new ApiError(1070);
 
         const existing = await prisma.user.findUnique({
           where: {

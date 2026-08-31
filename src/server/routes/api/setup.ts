@@ -1,4 +1,6 @@
 import { ApiError } from '@/lib/api/errors';
+import { config } from '@/lib/config';
+import { isReservedUsername } from '@/lib/reservedRoutes';
 import { createToken, hashPassword } from '@/lib/crypto';
 import { prisma } from '@/lib/db';
 import { User, userSchema, userSelect } from '@/lib/db/models/user';
@@ -61,6 +63,7 @@ export default typedPlugin(
         await getZipline();
 
         const { username, password } = req.body;
+        if (isReservedUsername(username, config.files.route, config.urls.route)) throw new ApiError(1070);
 
         const hashed = await hashPassword(password);
         const token = createToken();

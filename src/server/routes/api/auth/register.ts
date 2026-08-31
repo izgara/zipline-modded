@@ -1,4 +1,5 @@
 import { ApiError } from '@/lib/api/errors';
+import { isReservedUsername } from '@/lib/reservedRoutes';
 import { ziplineClientParseSchema } from '@/lib/api/detect';
 import { config } from '@/lib/config';
 import { createToken, hashPassword } from '@/lib/crypto';
@@ -45,6 +46,7 @@ export default typedPlugin(
         const session = await getSession(req, res);
 
         const { username, password, code } = req.body;
+        if (isReservedUsername(username, config.files.route, config.urls.route)) throw new ApiError(1070);
 
         if (code && !config.invites.enabled) throw new ApiError(1036);
         if (!code && !config.features.userRegistration) throw new ApiError(1037);

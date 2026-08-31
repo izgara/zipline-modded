@@ -1,4 +1,6 @@
 import { ApiError } from '@/lib/api/errors';
+import { config } from '@/lib/config';
+import { isReservedUsername } from '@/lib/reservedRoutes';
 import { bytes } from '@/lib/bytes';
 import { hashPassword } from '@/lib/crypto';
 import { datasource } from '@/lib/datasource';
@@ -94,6 +96,8 @@ export default typedPlugin(
         if (!canInteract(req.user.role, user.role)) throw new ApiError(3019);
 
         const { username, password, avatar, role, quota } = req.body;
+        if (username && isReservedUsername(username, config.files.route, config.urls.route))
+          throw new ApiError(1070);
         if (role && !canInteract(req.user.role, role)) throw new ApiError(3007);
 
         let finalQuota:
