@@ -1,6 +1,8 @@
 import { ApiError } from '@/lib/api/errors';
-import { prisma } from '@/lib/db';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
 import typedPlugin from '@/server/typedPlugin';
+import { sql } from 'drizzle-orm';
 import z from 'zod';
 
 export const PATH = '/api/users/:username/avatar';
@@ -18,10 +20,11 @@ export default typedPlugin(
         },
       },
       async (req, res) => {
-        const user = await prisma.user.findFirst({
-          where: { username: { equals: req.params.username, mode: 'insensitive' } },
-          select: { avatar: true },
-        });
+        const [user] = await db
+          .select({ avatar: users.avatar })
+          .from(users)
+          .where(sql`lower(${users.username}) = lower(${req.params.username})`)
+          .limit(1);
 
         if (!user?.avatar) throw new ApiError(9002);
 

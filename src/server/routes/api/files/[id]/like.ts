@@ -1,8 +1,10 @@
 import { ApiError } from '@/lib/api/errors';
-import { prisma } from '@/lib/db';
+import { db } from '@/lib/db';
+import { fileLikes } from '@/lib/db/schema';
 import { secondlyRatelimit } from '@/lib/ratelimits';
 import { ensureVisitorId } from '@/lib/visitor';
 import typedPlugin from '@/server/typedPlugin';
+import { eq } from 'drizzle-orm';
 import z from 'zod';
 
 export type ApiFilesIdLikeResponse = {
@@ -31,28 +33,29 @@ export default typedPlugin(
         ...secondlyRatelimit(10, 5),
       },
       async (req, res) => {
-        const file = await prisma.file.findFirst({
+        const file = await db.query.files.findFirst({
+          columns: { id: true },
           where: { id: req.params.id, showOnProfile: true },
-          select: { id: true },
         });
         if (!file) throw new ApiError(9002);
 
         const visitorId = ensureVisitorId(req, res);
 
-        const existingLike = await prisma.fileLike.findUnique({
-          where: { fileId_visitorId: { fileId: file.id, visitorId } },
+        const existingLike = await db.query.fileLikes.findFirst({
+          columns: { id: true },
+          where: { fileId: file.id, visitorId },
         });
 
         let liked: boolean;
         if (existingLike) {
-          await prisma.fileLike.delete({ where: { id: existingLike.id } });
+          await db.delete(fileLikes).where(eq(fileLikes.id, existingLike.id));
           liked = false;
         } else {
-          await prisma.fileLike.create({ data: { fileId: file.id, visitorId } });
+          await db.insert(fileLikes).values({ fileId: file.id, visitorId });
           liked = true;
         }
 
-        const likes = await prisma.fileLike.count({ where: { fileId: file.id } });
+        const likes = await db.$count(fileLikes, eq(fileLikes.fileId, file.id));
 
         return res.send({ liked, likes });
       },

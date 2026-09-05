@@ -1,6 +1,7 @@
 import { ApiError } from '@/lib/api/errors';
-import { prisma } from '@/lib/db';
-import { cleanTag, cleanTags, Tag, tagSchema, tagSelect } from '@/lib/db/models/tag';
+import { db } from '@/lib/db';
+import { cleanTag, cleanTags, Tag, tagColumns, tagSchema } from '@/lib/db/models/tag';
+import { tags } from '@/lib/db/schema';
 import { log } from '@/lib/logger';
 import { secondlyRatelimit } from '@/lib/ratelimits';
 import { zStringTrimmed } from '@/lib/validation';
@@ -28,11 +29,12 @@ export default typedPlugin(
         preHandler: [userMiddleware],
       },
       async (req, res) => {
-        const tags = await prisma.tag.findMany({
-          select: tagSelect,
+        const tagList = await db.query.tags.findMany({
+          columns: tagColumns,
+          with: { files: { columns: { id: true } } },
         });
 
-        return res.send(cleanTags(tags));
+        return res.send(cleanTags(tagList as Tag[]));
       },
     );
 
@@ -57,23 +59,26 @@ export default typedPlugin(
       async (req, res) => {
         const { name, color, icon } = req.body;
 
-        const existingTag = await prisma.tag.findFirst({
-          where: {
-            name,
-          },
+        const existingTag = await db.query.tags.findFirst({
+          columns: { id: true },
+          where: { name },
         });
 
         if (existingTag) throw new ApiError(1033);
 
-        const tag = await prisma.tag.create({
-          data: {
-            name,
-            color,
-            icon: icon || null,
-            userId: req.user.id,
-          },
-          select: tagSelect,
-        });
+        const [row] = await db
+          .insert(tags)
+          .values({ name, color, icon: icon || null, userId: req.user.id })
+          .returning({
+            id: tags.id,
+            createdAt: tags.createdAt,
+            updatedAt: tags.updatedAt,
+            name: tags.name,
+            color: tags.color,
+            icon: tags.icon,
+          });
+        if (!row) throw new ApiError(1033);
+        const tag = { ...row, files: [] as { id: string }[] } as Tag;
 
         logger.info('tag created', {
           id: tag.id,

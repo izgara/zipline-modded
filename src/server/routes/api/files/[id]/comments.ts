@@ -1,5 +1,6 @@
 import { ApiError } from '@/lib/api/errors';
-import { prisma } from '@/lib/db';
+import { db } from '@/lib/db';
+import { fileComments } from '@/lib/db/schema';
 import { secondlyRatelimit } from '@/lib/ratelimits';
 import { ensureVisitorId } from '@/lib/visitor';
 import typedPlugin from '@/server/typedPlugin';
@@ -15,12 +16,12 @@ const commentSchema = z.object({
 export type FileComment = z.infer<typeof commentSchema>;
 export type ApiFilesIdCommentsResponse = FileComment | FileComment[];
 
-const commentSelect = {
+const commentColumns = {
   id: true,
   createdAt: true,
   displayName: true,
   content: true,
-};
+} as const;
 
 export const PATH = '/api/files/:id/comments';
 export default typedPlugin(
@@ -39,15 +40,15 @@ export default typedPlugin(
         },
       },
       async (req, res) => {
-        const file = await prisma.file.findFirst({
+        const file = await db.query.files.findFirst({
+          columns: { id: true },
           where: { id: req.params.id, showOnProfile: true },
-          select: { id: true },
         });
         if (!file) throw new ApiError(9002);
 
-        const comments = await prisma.fileComment.findMany({
+        const comments = await db.query.fileComments.findMany({
+          columns: commentColumns,
           where: { fileId: file.id },
-          select: commentSelect,
           orderBy: { createdAt: 'asc' },
         });
 
@@ -74,23 +75,28 @@ export default typedPlugin(
         ...secondlyRatelimit(30, 3),
       },
       async (req, res) => {
-        const file = await prisma.file.findFirst({
+        const file = await db.query.files.findFirst({
+          columns: { id: true },
           where: { id: req.params.id, showOnProfile: true },
-          select: { id: true },
         });
         if (!file) throw new ApiError(9002);
 
         const visitorId = ensureVisitorId(req, res);
 
-        const comment = await prisma.fileComment.create({
-          data: {
+        const [comment] = await db
+          .insert(fileComments)
+          .values({
             fileId: file.id,
             visitorId,
             displayName: req.body.displayName,
             content: req.body.content,
-          },
-          select: commentSelect,
-        });
+          })
+          .returning({
+            id: fileComments.id,
+            createdAt: fileComments.createdAt,
+            displayName: fileComments.displayName,
+            content: fileComments.content,
+          });
 
         return res.send(comment);
       },

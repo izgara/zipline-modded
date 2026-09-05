@@ -7,14 +7,16 @@ import 'mantine-datatable/styles.css';
 
 import { config as zConfig } from '@/lib/config';
 import type { Config } from '@/lib/config/validate';
-import { prisma } from '@/lib/db';
-import { cleanFiles, fileSelect } from '@/lib/db/models/file';
-import { limitedUserSelect } from '@/lib/db/models/user';
+import { db } from '@/lib/db';
+import { cleanFiles, fileColumns } from '@/lib/db/models/file';
+import { tagColumns } from '@/lib/db/models/tag';
+import { users } from '@/lib/db/schema';
 import { createZiplineSsr } from '@/lib/ssr/createZiplineSsr';
 import { stripHtml } from '@/lib/stripHtml';
 import type { ZiplineTheme } from '@/lib/theme';
 import { readThemes } from '@/lib/theme/file';
 import { readVisitorId } from '@/lib/visitor';
+import { sql } from 'drizzle-orm';
 import { FastifyRequest } from 'fastify';
 import { renderToString } from 'react-dom/server';
 import { createStaticHandler, createStaticRouter, StaticRouterProvider } from 'react-router-dom';
@@ -37,27 +39,45 @@ export async function render(
   const { config: libConfig, reloadSettings } = await import('@/lib/config');
   if (!libConfig) await reloadSettings();
 
-  const user = await prisma.user.findFirst({
-    where: { username: { equals: username, mode: 'insensitive' } },
-    select: limitedUserSelect,
-  });
+  const [user] = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      role: users.role,
+      view: users.view,
+      avatar: users.avatar,
+    })
+    .from(users)
+    .where(sql`lower(${users.username}) = lower(${username})`)
+    .limit(1);
   if (!user) return { html: 'Not Found', meta: '', status: 404 };
 
   const visitorId = readVisitorId(req);
 
-  const rawFiles = await prisma.file.findMany({
-    where: { userId: user.id, showOnProfile: true, password: null },
-    select: {
-      ...fileSelect,
-      _count: { select: { likes: true, comments: true } },
-      likes: visitorId ? { where: { visitorId }, select: { id: true } } : false,
-    },
+  const rawFiles = await db.query.files.findMany({
+    columns: fileColumns,
+    where: { userId: user.id, showOnProfile: true, password: { isNull: true } },
     orderBy: { createdAt: 'desc' },
+    with: {
+      thumbnail: { columns: { path: true } },
+      tags: { columns: tagColumns },
+      likes: { columns: { visitorId: true } },
+      comments: { columns: { id: true } },
+    },
   });
 
-  const files = cleanFiles(rawFiles, true).map((file: any) => {
-    const { _count, likes, ...rest } = file;
-    return { ...rest, likeCount: _count.likes, commentCount: _count.comments, likedByMe: !!likes?.length };
+  const files = cleanFiles(rawFiles as any, true).map((file: any) => {
+    const { likes, comments, ...rest } = file;
+    return {
+      ...rest,
+      likeCount: likes.length,
+      commentCount: comments.length,
+      likedByMe: visitorId
+        ? likes.some((like: { visitorId: string }) => like.visitorId === visitorId)
+        : false,
+    };
   });
 
   let host = req.headers.host || 'localhost';

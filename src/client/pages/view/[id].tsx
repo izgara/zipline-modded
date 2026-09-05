@@ -40,15 +40,15 @@ type SsrData = {
 
 export default function ViewFileId() {
   const data = useSsrData<SsrData>();
-  if (!data) return null;
-
-  const { file, password, code, user, host, metrics, filesRoute, token } = data;
-
   const [passwordValue, setPassword] = useState<string>('');
   const [passwordError, setPasswordError] = useState<string>('');
   const [detailsOpen, setDetailsOpen] = useState<boolean>(false);
 
-  useTitle(file.originalName ?? file.name ?? 'View File');
+  useTitle(data?.file.originalName ?? data?.file.name ?? 'View File');
+
+  if (!data) return null;
+
+  const { file, password, code, user, host, metrics, filesRoute, token } = data;
 
   return password && !token ? (
     <Modal onClose={() => {}} opened={true} withCloseButton={false} centered title='Password required'>
@@ -164,22 +164,22 @@ export default function ViewFileId() {
                 </Group>
               )}
               {user?.view!.showFolder &&
-                file.Folder &&
-                (file.Folder.public ? (
+                file.folder &&
+                (file.folder.public ? (
                   <Tooltip label='View folder'>
                     <Anchor
                       component={Link}
                       ml='sm'
-                      to={`/folder/${file.Folder.id}`}
+                      to={`/folder/${file.folder.id}`}
                       target='_blank'
                       reloadDocument
                     >
-                      {file.Folder.name}
+                      {file.folder.name}
                     </Anchor>
                   </Tooltip>
                 ) : (
                   <Text ml='sm' size='sm' c='dimmed'>
-                    {file.Folder.name}
+                    {file.folder.name}
                   </Text>
                 ))}
               {user?.view!.showMimetype && (

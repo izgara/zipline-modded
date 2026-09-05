@@ -1,5 +1,5 @@
 import { ApiError } from '@/lib/api/errors';
-import { prisma } from '@/lib/db';
+import { db } from '@/lib/db';
 import typedPlugin from '@/server/typedPlugin';
 import z from 'zod';
 
@@ -18,9 +18,9 @@ export default typedPlugin(
         },
       },
       async (req, res) => {
-        const tag = await prisma.tag.findFirst({
+        const tag = await db.query.tags.findFirst({
+          columns: { icon: true },
           where: { id: req.params.id },
-          select: { icon: true },
         });
 
         if (!tag?.icon) throw new ApiError(9002);

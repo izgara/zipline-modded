@@ -8,7 +8,7 @@ RUN corepack enable \
 
 WORKDIR /zipline
 
-COPY prisma ./prisma
+COPY drizzle ./drizzle
 COPY package.json .
 COPY pnpm-lock.yaml .
 COPY pnpm-workspace.yaml .
@@ -25,7 +25,8 @@ COPY src ./src
 COPY .gitignore ./.gitignore
 
 COPY postcss.config.mjs ./postcss.config.mjs
-COPY eslint.config.mjs ./eslint.config.mjs
+COPY .oxfmtrc.json ./.oxfmtrc.json
+COPY .oxlintrc.json ./.oxlintrc.json
 COPY vite.config.ts ./vite.config.ts
 COPY tsup.config.ts ./tsup.config.ts
 COPY tsconfig.json ./tsconfig.json
@@ -44,9 +45,6 @@ COPY --from=builder /zipline/build ./build
 
 COPY --from=builder /zipline/mimes.json ./mimes.json
 COPY --from=builder /zipline/code.json ./code.json
-
-RUN pnpm prisma generate \
-    && rm -rf /tmp/* /root/*
 
 ENV NODE_ENV=production
 ENV ZIPLINE_ROOT=/zipline

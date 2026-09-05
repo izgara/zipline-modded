@@ -2,7 +2,7 @@ import RelativeDate from '@/components/RelativeDate';
 import { fetchApi } from '@/lib/fetchApi';
 import useObjectState from '@/lib/client/hooks/useObjectState';
 import { useUserStore } from '@/lib/client/store/user';
-import { UserPasskey } from '@/prisma/client';
+import type { UserPasskey } from '@/lib/db/models/passkey';
 import { ActionIcon, Button, Group, Modal, Paper, Stack, Text, TextInput } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
@@ -159,7 +159,7 @@ export default function PasskeyButton() {
                     </>
                   )}
                 </Text>
-                {!(passkey?.reg as Record<string, any>).webauthn && (
+                {!(passkey.reg as Record<string, any>)?.webauthn && (
                   <Text size='xs' mt='xs' c='red'>
                     Warning: This passkey was created with an older version of Zipline and <b>WILL NOT</b>{' '}
                     work with this version. Please delete and recreate this passkey to ensure compatibility.

@@ -1,5 +1,7 @@
-import { prisma } from '@/lib/db';
+import { db } from '@/lib/db';
+import { urls, users } from '@/lib/db/schema';
 import { log } from '@/lib/logger';
+import { eq, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import loadRoutes from '../routes';
 import { filesRoute } from '../routes/files.dy';
@@ -31,21 +33,19 @@ export async function registerRoutes(server: FastifyInstance, mode: string) {
   if (config.files.route === '/' && config.urls.route === '/') {
     logger.debug('files & urls route = /, using catch-all route');
 
-    server.get<{ Params: { id: string } }>('/:id', async (req, res) => {
-      const { id } = req.params;
+    server.get<{ Params: { id: string }; Querystring: { token?: string; download?: string } }>(
+      '/:id',
+      async (req, res) => {
+        const { id } = req.params;
 
-      if (id === '') return res.callNotFound();
-      else if (id === 'dashboard') return res.callNotFound(); // todo render dashboard
+        if (id === '') return res.callNotFound();
+        else if (id === 'dashboard') return res.callNotFound(); // todo render dashboard
 
-      const url = await prisma.url.findFirst({
-        where: {
-          OR: [{ code: id }, { vanity: id }],
-        },
-      });
-
-      if (url) return urlsRoute(req as any, res);
-      else return filesRoute(req as any, res);
-    });
+        const urlCount = await db.$count(urls, or(eq(urls.code, id), eq(urls.vanity, id)));
+        if (urlCount > 0) return urlsRoute(req, res);
+        else return filesRoute(req, res);
+      },
+    );
   } else {
     server.get(config.files.route === '/' ? '/:id' : `${config.files.route}/:id`, filesRoute);
     server.get(config.urls.route === '/' ? '/:id' : `${config.urls.route}/:id`, urlsRoute);
@@ -69,10 +69,11 @@ export async function registerRoutes(server: FastifyInstance, mode: string) {
     const { username } = req.params;
     if (!username) return res.callNotFound();
 
-    const user = await prisma.user.findFirst({
-      where: { username: { equals: username, mode: 'insensitive' } },
-      select: { id: true },
-    });
+    const [user] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(sql`lower(${users.username}) = lower(${username})`)
+      .limit(1);
 
     if (!user) return res.callNotFound();
 

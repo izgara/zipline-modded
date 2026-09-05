@@ -1,8 +1,10 @@
 import { ApiError } from '@/lib/api/errors';
-import { prisma } from '@/lib/db';
+import { db } from '@/lib/db';
+import { fileComments } from '@/lib/db/schema';
 import { canInteract } from '@/lib/role';
 import { userMiddleware } from '@/server/middleware/user';
 import typedPlugin from '@/server/typedPlugin';
+import { and, eq } from 'drizzle-orm';
 import z from 'zod';
 
 export type ApiUserFilesIdCommentsIdResponse = {
@@ -31,19 +33,21 @@ export default typedPlugin(
         preHandler: [userMiddleware],
       },
       async (req, res) => {
-        const file = await prisma.file.findFirst({
+        const file = await db.query.files.findFirst({
+          columns: { id: true },
           where: { id: req.params.id },
-          select: { id: true, User: true },
+          with: { user: { columns: { id: true, role: true } } },
         });
         if (!file) throw new ApiError(4000);
 
-        if (req.user.id !== file.User?.id && !canInteract(req.user.role, file.User?.role ?? 'USER'))
+        if (req.user.id !== file.user?.id && !canInteract(req.user.role, file.user?.role ?? 'USER'))
           throw new ApiError(4000);
 
-        const deleted = await prisma.fileComment.deleteMany({
-          where: { id: req.params.commentId, fileId: file.id },
-        });
-        if (deleted.count === 0) throw new ApiError(9002);
+        const deleted = await db
+          .delete(fileComments)
+          .where(and(eq(fileComments.id, req.params.commentId), eq(fileComments.fileId, file.id)))
+          .returning({ id: fileComments.id });
+        if (deleted.length === 0) throw new ApiError(9002);
 
         return res.send({ success: true });
       },

@@ -7,13 +7,13 @@ import { checkOutput, COMPRESS_TYPES } from '../compress';
 import ms, { StringValue } from 'ms';
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
+  // oxlint-disable-next-line typescript/no-namespace
   namespace NodeJS {
     interface ProcessEnv {
       // if running a build, dont connect db
       ZIPLINE_BUILD?: string;
 
-      // run with extra prisma db logs
+      // run with extra database query logs
       ZIPLINE_DB_LOG?: string;
 
       // enables worker threads to log inits
@@ -46,7 +46,7 @@ declare global {
   }
 }
 
-export const MIME_REGEX = /^[a-zA-Z0-9!#$&^_\-\+.]+\/[a-zA-Z0-9!#$&^_\-\+.]+$/i;
+export const MIME_REGEX = /^[a-zA-Z0-9!#$&^_\-+.]+\/[a-zA-Z0-9!#$&^_\-+.]+$/i;
 
 export const MAX_SAFE_TIMEOUT_MS = 2147483647;
 

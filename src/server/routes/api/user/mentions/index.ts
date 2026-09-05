@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { db } from '@/lib/db';
 import { userMiddleware } from '@/server/middleware/user';
 import typedPlugin from '@/server/typedPlugin';
 import z from 'zod';
@@ -21,9 +21,9 @@ export default typedPlugin(
         preHandler: [userMiddleware],
       },
       async (req, res) => {
-        const files = await prisma.file.findMany({
+        const files = await db.query.files.findMany({
+          columns: { mentions: true },
           where: { userId: req.user.id },
-          select: { mentions: true },
         });
 
         const mentions = new Set<string>();

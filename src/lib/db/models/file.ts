@@ -1,51 +1,85 @@
 import { config } from '@/lib/config';
-import { sanitizeFilename } from '@/lib/fs';
+import { db, type DbClient } from '@/lib/db';
+import { files } from '@/lib/db/schema';
 import { formatRootUrl } from '@/lib/url';
-import type { Prisma } from '@/prisma/client';
+import { and, eq, getColumns, inArray, isNotNull } from 'drizzle-orm';
+import { createSelectSchema } from 'drizzle-orm/zod';
 import { z } from 'zod';
-import { cleanTags, tagSchema, tagSelectNoFiles } from './tag';
+import { cleanTags, tagColumns, tagSchema } from './tag';
 
-export const fileSelect = {
-  createdAt: true,
-  updatedAt: true,
-  deletesAt: true,
-  favorite: true,
-  showOnProfile: true,
-  profileCaption: true,
-  mentions: true,
-  id: true,
-  originalName: true,
-  name: true,
-  size: true,
-  type: true,
-  views: true,
-  maxViews: true,
-  folderId: true,
-  anonymous: true,
-  thumbnail: {
-    select: {
-      path: true,
-    },
-  },
-  tags: {
-    select: tagSelectNoFiles,
-  },
-};
+export type FileInsert = typeof files.$inferInsert;
+export type FileUpdate = Partial<Omit<FileInsert, 'id' | 'createdAt' | 'updatedAt'>>;
 
-export async function findFileByName<TResult>(
-  id: string,
-  query: (
-    where: Prisma.FileWhereInput,
-    orderBy?: Prisma.FileOrderByWithRelationInput,
-  ) => Promise<TResult | null>,
-) {
-  const name = sanitizeFilename(id);
-  if (!name) return null;
-  const file = await query({ name });
-  if (file || !config.files.extensionlessUrls || name.includes('.')) return file;
-  return query({ name: { startsWith: `${name}.` } }, { createdAt: 'desc' });
+export const fileColumns = { userId: false, password: false } as const;
+
+const { password: _password, userId: _userId, ...fileDeleteColumns } = getColumns(files);
+
+export const filePasswordExtra = {
+  password: (file: typeof files) => isNotNull(file.password).mapWith(Boolean).as('password'),
+} as const;
+
+export const fileRelations = {
+  thumbnail: { columns: { path: true } },
+  tags: { columns: tagColumns },
+} as const;
+
+const fileOwnerRelations = {
+  ...fileRelations,
+  user: { columns: { id: true, role: true } },
+} as const;
+
+export async function getFile(identifier: string, client: DbClient = db) {
+  const row = await client.query.files.findFirst({
+    columns: fileColumns,
+    where: { OR: [{ id: identifier }, { name: identifier }] },
+    with: fileOwnerRelations,
+  });
+  return row ?? null;
 }
 
+export async function getFilesWithUser(ids: string[], client: DbClient = db) {
+  if (!ids.length) return [];
+
+  return client.query.files.findMany({
+    columns: { id: true, name: true, userId: true, folderId: true },
+    where: { id: { in: ids } },
+    with: { user: { columns: { id: true, role: true } } },
+  });
+}
+
+export async function updateFiles(ids: string[], data: FileUpdate, userId?: string, client: DbClient = db) {
+  if (!ids.length) return 0;
+
+  const rows = await client
+    .update(files)
+    .set(data)
+    .where(and(inArray(files.id, ids), userId ? eq(files.userId, userId) : undefined))
+    .returning({ id: files.id });
+  return rows.length;
+}
+
+export async function removeFile(id: string, client: DbClient = db) {
+  const rows = await client.delete(files).where(eq(files.id, id)).returning(fileDeleteColumns);
+
+  return rows[0] ?? null;
+}
+
+export async function removeFiles(ids: string[], client: DbClient = db) {
+  if (!ids.length) return 0;
+
+  const rows = await client.delete(files).where(inArray(files.id, ids)).returning({ id: files.id });
+  return rows.length;
+}
+
+export function formatFiles<T extends Partial<File>>(rows: T[]): T[] {
+  for (const file of rows) {
+    if (file.name) file.url = formatRootUrl(config.files.route, file.name);
+  }
+  return rows;
+}
+
+// fork: profile pages clean the password down to a boolean, clean tag icons,
+// optionally stringify dates for SSR, and attach the public url.
 export function cleanFiles(files: File[], stringifyDates = false) {
   for (let i = 0; i !== files.length; ++i) {
     const file = files[i];
@@ -64,35 +98,20 @@ export function cleanFiles(files: File[], stringifyDates = false) {
   return files;
 }
 
-export const fileSchema = z.object({
-  createdAt: z.union([z.date(), z.string()]),
-  updatedAt: z.union([z.date(), z.string()]),
-  deletesAt: z.union([z.date(), z.string()]).nullable(),
-  favorite: z.boolean(),
-  showOnProfile: z.boolean(),
-  profileCaption: z.string().nullable(),
-  mentions: z.array(z.string()),
-  id: z.string(),
-  originalName: z.string().nullable(),
-  name: z.string(),
-  size: z.number(),
-  type: z.string(),
-  views: z.number(),
-  maxViews: z.number().nullish(),
-  password: z.union([z.string(), z.boolean()]).nullish(),
-  folderId: z.string().nullable(),
-  anonymous: z.boolean().nullish(),
-
-  thumbnail: z
-    .object({
-      path: z.string(),
-    })
-    .nullable(),
-
-  tags: z.array(tagSchema).optional(),
-
-  url: z.string().optional(),
-  similarity: z.number().optional(),
-});
+export const fileSchema = createSelectSchema(files, {
+  createdAt: (schema) => z.union([schema, z.string()]),
+  updatedAt: (schema) => z.union([schema, z.string()]),
+  deletesAt: (schema) => z.union([schema, z.string()]),
+  maxViews: (schema) => schema.optional(),
+  password: z.boolean().nullable().optional(),
+  anonymous: (schema) => schema.optional(),
+})
+  .omit({ userId: true })
+  .extend({
+    thumbnail: z.object({ path: z.string() }).nullable(),
+    tags: z.array(tagSchema).optional(),
+    url: z.string().optional(),
+    similarity: z.number().optional(),
+  });
 
 export type File = z.infer<typeof fileSchema>;

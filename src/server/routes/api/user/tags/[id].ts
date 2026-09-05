@@ -1,10 +1,13 @@
 import { ApiError } from '@/lib/api/errors';
-import { prisma } from '@/lib/db';
-import { cleanTag, Tag, tagSchema, tagSelect } from '@/lib/db/models/tag';
+import { db } from '@/lib/db';
+import { cleanTag, Tag, tagColumns, tagSchema } from '@/lib/db/models/tag';
+import { tags } from '@/lib/db/schema';
+import { isPostgresError } from '@/lib/db/utils';
 import { log } from '@/lib/logger';
 import { zStringTrimmed } from '@/lib/validation';
 import { userMiddleware } from '@/server/middleware/user';
 import typedPlugin from '@/server/typedPlugin';
+import { eq } from 'drizzle-orm';
 import z from 'zod';
 
 export type ApiUserTagsIdResponse = Tag;
@@ -34,15 +37,14 @@ export default typedPlugin(
       async (req, res) => {
         const { id } = req.params;
 
-        const tag = await prisma.tag.findFirst({
-          where: {
-            id,
-          },
-          select: tagSelect,
+        const tag = await db.query.tags.findFirst({
+          columns: tagColumns,
+          where: { id },
+          with: { files: { columns: { id: true } } },
         });
         if (!tag) throw new ApiError(9002);
 
-        return res.send(cleanTag(tag));
+        return res.send(cleanTag(tag as Tag));
       },
     );
 
@@ -64,13 +66,8 @@ export default typedPlugin(
       async (req, res) => {
         const { id } = req.params;
 
-        const tag = await prisma.tag.deleteMany({
-          where: {
-            id,
-          },
-        });
-
-        if (tag.count === 0) throw new ApiError(9002);
+        const [deleted] = await db.delete(tags).where(eq(tags.id, id)).returning({ id: tags.id });
+        if (!deleted) throw new ApiError(9002);
 
         logger.info('tag deleted', {
           id,
@@ -106,34 +103,40 @@ export default typedPlugin(
         const { id } = req.params;
         const { name, color, icon } = req.body;
 
-        const existingTag = await prisma.tag.findFirst({
-          where: {
-            id,
-          },
+        const existingTag = await db.query.tags.findFirst({
+          columns: tagColumns,
+          where: { id },
+          with: { files: { columns: { id: true } } },
         });
         if (!existingTag) throw new ApiError(9002);
 
-        if (name) {
-          const existing = await prisma.tag.findFirst({
-            where: {
-              name,
-            },
-          });
-
-          if (existing) throw new ApiError(1034);
+        const changes = {
+          ...(name && { name }),
+          ...(color && { color }),
+          ...(icon !== undefined && { icon: icon || null }),
+        };
+        let tag = existingTag as Tag;
+        if (Object.keys(changes).length) {
+          try {
+            const [updated] = await db
+              .update(tags)
+              .set(changes)
+              .where(eq(tags.id, existingTag.id))
+              .returning({
+                id: tags.id,
+                createdAt: tags.createdAt,
+                updatedAt: tags.updatedAt,
+                name: tags.name,
+                color: tags.color,
+                icon: tags.icon,
+              });
+            if (!updated) throw new ApiError(9002);
+            tag = { ...updated, files: existingTag.files } as Tag;
+          } catch (error) {
+            if (isPostgresError(error, '23505')) throw new ApiError(1034);
+            throw error;
+          }
         }
-
-        const tag = await prisma.tag.update({
-          where: {
-            id: existingTag.id,
-          },
-          data: {
-            ...(name && { name }),
-            ...(color && { color }),
-            ...(icon !== undefined && { icon: icon || null }),
-          },
-          select: tagSelect,
-        });
 
         logger.info('tag updated', {
           id: tag.id,
