@@ -12,6 +12,7 @@ import type { FastifyInstance } from 'fastify';
 import { jsonSchemaTransform, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { version } from '@/lib/version';
 import { checkRateLimit } from '../plugins/checkRateLimit';
+import downloadsPlugin from '../plugins/downloads';
 import oauthPlugin from '../plugins/oauth';
 import vitePlugin from '../plugins/vite';
 
@@ -57,6 +58,7 @@ export async function registerPlugins(server: FastifyInstance) {
 
   await server.register(vitePlugin);
   await server.register(oauthPlugin);
+  await server.register(downloadsPlugin);
 
   if (config.ratelimit.enabled) {
     try {

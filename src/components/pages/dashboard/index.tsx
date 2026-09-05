@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 
 const ActivityChart = lazy(() => import('./parts/ActivityChart'));
+const ClipManagerCard = lazy(() => import('./parts/ClipManagerCard'));
 const Recents = lazy(() => import('./parts/Recents'));
 
 export default function DashboardHome() {
@@ -39,6 +40,13 @@ export default function DashboardHome() {
           You have <b>{statsLoading ? '...' : stats?.filesUploaded}</b> files uploaded.
         </Text>
       </Skeleton>
+
+      {/* High on the page on purpose: the app is the reason most people are
+          here, and it is the one thing on this screen they cannot find
+          anywhere else in the dashboard. */}
+      <Suspense fallback={<Skeleton height={112} radius='md' mt='lg' animate />}>
+        <ClipManagerCard />
+      </Suspense>
 
       {homeShowRecents && (
         <Suspense
