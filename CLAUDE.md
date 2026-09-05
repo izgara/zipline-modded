@@ -3,14 +3,20 @@
 A fork of [Zipline](https://github.com/diced/zipline) v4.7.0 that serves
 miyav.tv. Fastify + React Router + Mantine 9, built with vite/tsup.
 
-Upstream is `trunk`; the local commits on top are the fork. Keep them small and
-separately committed — every upstream merge has to carry them forward.
+The fork's own commits sit on top of upstream v4.7.0 on the `trunk` branch. Keep
+them small and separately committed — every upstream merge has to carry them
+forward.
 
 Current fork commits:
 
 - `9eb235c5` public profiles at `/<username>` instead of `/profile/<username>`
 - `5981c52c` reject usernames that collide with a root-level route
 - `f91b6461` serve Clip Manager installers at `/download`, offer them on the homepage
+
+None of them exist on the `izgara/zipline-modded` GitHub remote — that mirror
+stopped at upstream v4.7.0 and everything since has lived only on vps4. Pushing
+them there publishes them, so it is the owner's call, not something to do as
+part of a deploy.
 
 ## Where it runs
 
@@ -65,6 +71,8 @@ labels.
 
 - **`scp` is broken** — vps4's SFTP subsystem is down and modern scp defaults to
   it. Use `scp -O` (legacy protocol) or `ssh vps4 'sudo tee path > /dev/null' < file`.
-- Pushing here updates the working tree directly
+- The deploy remote is named **`vps4`**, and `trunk` tracks it, so a plain
+  `git push` deploys. Pushing there updates vps4's working tree directly
   (`receive.denyCurrentBranch = updateInstead`), so the loop is: edit locally,
-  `git push`, then build over ssh.
+  `git push`, then build over ssh. It refuses to move a dirty tree — don't edit
+  on vps4 directly.
