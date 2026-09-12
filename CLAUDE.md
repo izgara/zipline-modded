@@ -7,8 +7,19 @@ layer is Drizzle (`src/lib/db/schema.ts` + `relations.ts` + `drizzle/`), not
 Prisma. Do not reintroduce `@/lib/db`'s old `prisma` client; use `db` (the
 Drizzle client) and the relational query builder (`db.query.*`).
 
+Upstream is tracked to **`862eed76` (fix: oidc avatar parsing)**, merged as
+`8402ba86` — the tip of `diced/zipline` trunk at 2026-09-12.
+
 The fork's own changes sit on top of upstream on the `trunk` branch. Keep them
 small and separately committed — every upstream merge has to carry them forward.
+
+To pick up new upstream work: the `upstream` remote exists on vps4 but not in
+this clone, so fetch it by URL and merge here, then push and deploy as below.
+
+```sh
+git fetch https://github.com/diced/zipline.git trunk
+git merge --no-commit --no-ff FETCH_HEAD   # inspect before committing
+```
 
 Current fork features (folded onto Drizzle in merge `eabd12a2`):
 
