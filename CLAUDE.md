@@ -7,8 +7,10 @@ layer is Drizzle (`src/lib/db/schema.ts` + `relations.ts` + `drizzle/`), not
 Prisma. Do not reintroduce `@/lib/db`'s old `prisma` client; use `db` (the
 Drizzle client) and the relational query builder (`db.query.*`).
 
-Upstream is tracked to **`862eed76` (fix: oidc avatar parsing)**, merged as
-`8402ba86` — the tip of `diced/zipline` trunk at 2026-09-12.
+Upstream is tracked to **`c0fa376e` (fix: unpin apk package versions)**, merged
+as `fc93bff6` — the tip of `diced/zipline` trunk at 2026-09-17. That merge
+carried upstream's pglite support, the test suite, and four security-advisory
+fixes.
 
 The fork's own changes sit on top of upstream on the `trunk` branch. Keep them
 small and separately committed — every upstream merge has to carry them forward.
@@ -34,9 +36,9 @@ Current fork features (folded onto Drizzle in merge `eabd12a2`):
 - `react/react-compiler` is set to **warn** (not error) in `.oxlintrc.json`, so
   the fork's sync-from-props effects don't fail the lint gate
 
-None of this is on the `izgara/zipline-modded` GitHub remote — that mirror
-stopped at upstream v4.7.0 and everything since lives only on vps4. Pushing there
-publishes it, so it is the owner's call, not part of a deploy.
+The fork is mirrored to the **public** `izgara/zipline-modded` GitHub repo,
+pushed from vps4 (`git push origin trunk` there, over a deploy key scoped to that
+one repo). The owner has asked for it to be kept in sync with each update.
 
 ## Where it runs
 
@@ -84,6 +86,29 @@ boot; `20260905220918_fork_custom` is written **idempotently** (`IF NOT EXISTS`,
 FK `DO`-blocks) so it no-ops on that already-migrated live DB and fully builds a
 fresh one. Dump before any DB change: `docker exec zipline-postgres-1 pg_dump -U
 postgres -d zipline_v4 -Fc > backup.dump`.
+
+### Merging upstream migrations
+
+Upstream generates its snapshots without the fork schema, so every new upstream
+migration arrives with a `snapshot.json` whose `prevIds` points past
+`fork_custom` and whose `ddl` lacks the fork's tables. Runtime is fine (the
+migrator only runs `migration.sql`, by timestamp), but the chain forks and the
+next `drizzle-kit generate` would try to recreate the fork tables. After the
+merge, rebuild the new snapshot as: the previous fork-aware snapshot's `ddl` plus
+exactly the entries upstream added, `prevIds` = that previous snapshot's `id`.
+Leave `migration.sql` alone — its hash is what the live DB recorded. Then run
+`oxfmt` on it (the format gate rejects hand-written JSON) and confirm, in a
+throwaway clone, that `drizzle-kit check` is fine and `drizzle-kit generate`
+reports **No schema changes**.
+
+## Serving user-supplied images
+
+Avatars and tag icons are stored as arbitrary `data:` URLs — the write routes
+accept any string. Anything that turns one back into a response must go through
+`parseImageDataUrl` / `sendImage` in `src/lib/dataUrlImage.ts`, which only
+allows raster image types (no SVG) and adds `nosniff` plus a sandboxing CSP.
+Sending the stored mimetype straight through is stored XSS on the miyav.tv
+origin.
 
 ## Routing gotcha
 
