@@ -1,4 +1,5 @@
 import { ApiError } from '@/lib/api/errors';
+import { parseImageDataUrl, sendImage } from '@/lib/dataUrlImage';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import typedPlugin from '@/server/typedPlugin';
@@ -28,12 +29,10 @@ export default typedPlugin(
 
         if (!user?.avatar) throw new ApiError(9002);
 
-        const match = user.avatar.match(/^data:(.+);base64,(.+)$/);
-        if (!match) throw new ApiError(9002);
+        const image = parseImageDataUrl(user.avatar);
+        if (!image) throw new ApiError(9002);
 
-        const [, mimeType, base64Data] = match;
-
-        return res.type(mimeType).send(Buffer.from(base64Data, 'base64'));
+        return sendImage(res, image);
       },
     );
   },
