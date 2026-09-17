@@ -1,4 +1,5 @@
 import { ApiError } from '@/lib/api/errors';
+import { enforceMimetypePolicy } from '@/lib/api/upload';
 import { bytes } from '@/lib/bytes';
 import { hashPassword } from '@/lib/crypto';
 import { datasource } from '@/lib/datasource';
@@ -100,7 +101,7 @@ export default typedPlugin(
           data.profileCaption = req.body.profileCaption === '' ? null : req.body.profileCaption;
         if (req.body.mentions !== undefined) data.mentions = req.body.mentions;
         if (req.body.originalName !== undefined) data.originalName = req.body.originalName;
-        if (req.body.type !== undefined) data.type = req.body.type;
+        if (req.body.type !== undefined) data.type = enforceMimetypePolicy(req.body.type).mimetype;
         if (req.body.anonymous !== undefined) data.anonymous = req.body.anonymous;
 
         if (req.body.maxViews !== undefined) {
