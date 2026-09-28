@@ -7,10 +7,11 @@ layer is Drizzle (`src/lib/db/schema.ts` + `relations.ts` + `drizzle/`), not
 Prisma. Do not reintroduce `@/lib/db`'s old `prisma` client; use `db` (the
 Drizzle client) and the relational query builder (`db.query.*`).
 
-Upstream is tracked to **`c0fa376e` (fix: unpin apk package versions)**, merged
-as `fc93bff6` — the tip of `diced/zipline` trunk at 2026-09-17. That merge
-carried upstream's pglite support, the test suite, and four security-advisory
-fixes.
+Upstream is tracked to **`bdee0e72` (v4.8.0)**, merged as `a6b27033` — the tip
+of `diced/zipline` trunk at 2026-09-28. Clean merge, no new migrations. The
+release rewrote the chunked-upload ("partials") path to use a signed token
+instead of a client-supplied identifier; the Clip Manager is unaffected because
+it posts plain multipart to `/api/upload`.
 
 The fork's own changes sit on top of upstream on the `trunk` branch. Keep them
 small and separately committed — every upstream merge has to carry them forward.
