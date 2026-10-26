@@ -17,6 +17,7 @@
     "type": "Tür",
     "size": "Boyut",
     "createdAt": "Oluşturulma tarihi",
-    "favorite": "Favori"
+    "favorite": "Favori",
+    "showOnProfile": "Profilde"
   }
 }

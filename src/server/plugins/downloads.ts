@@ -31,7 +31,7 @@ async function downloadsPlugin(fastify: FastifyInstance) {
       // browser guess at rendering them. latest.json is read with fetch() by the
       // homepage, so it stays inline.
       if (path.endsWith('.json')) return;
-      res.setHeader('content-disposition', `attachment; filename="${basename(path)}"`);
+      res.header('content-disposition', `attachment; filename="${basename(path)}"`);
     },
   });
 

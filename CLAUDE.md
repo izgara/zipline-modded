@@ -7,11 +7,13 @@ layer is Drizzle (`src/lib/db/schema.ts` + `relations.ts` + `drizzle/`), not
 Prisma. Do not reintroduce `@/lib/db`'s old `prisma` client; use `db` (the
 Drizzle client) and the relational query builder (`db.query.*`).
 
-Upstream is tracked to **`bdee0e72` (v4.8.0)**, merged as `a6b27033` — the tip
-of `diced/zipline` trunk at 2026-09-28. Clean merge, no new migrations. The
-release rewrote the chunked-upload ("partials") path to use a signed token
-instead of a client-supplied identifier; the Clip Manager is unaffected because
-it posts plain multipart to `/api/upload`.
+Upstream is tracked to **`5fe2792f` (v4.8.2)**, merged as `bfa289aa` (2026-10-26).
+That release brought i18n to the whole web UI (`src/lib/i18n/locales/<lang>/`,
+`useTranslation`, `SafeTrans`): fork UI text added since then should be a
+translation key in `en` (and `tr`) rather than a literal, and the
+oidc_logout / user_quick_links migrations got fork-aware snapshots as
+described under "Merging upstream migrations". `@fastify/static` 10 hands
+`setHeaders` a FastifyReply (`res.header`, not `res.setHeader`).
 
 The fork's own changes sit on top of upstream on the `trunk` branch. Keep them
 small and separately committed — every upstream merge has to carry them forward.
@@ -34,7 +36,8 @@ Current fork features (folded onto Drizzle in merge `eabd12a2`):
 - file profile fields (`showOnProfile`, `profileCaption`, `mentions`), file
   likes & comments, tag icons, and **global/shared tags** — all defined in
   `schema.ts`/`relations.ts` and created by migration `20260905220918_fork_custom`
-- `react/react-compiler` is set to **warn** (not error) in `.oxlintrc.json`, so
+- `react/set-state-in-effect` (what oxlint calls the old `react-compiler` check
+  since v4.8.2) is set to **warn** (not error) in `.oxlintrc.json`, so
   the fork's sync-from-props effects don't fail the lint gate
 
 The fork is mirrored to the **public** `izgara/zipline-modded` GitHub repo,

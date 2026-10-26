@@ -19,7 +19,8 @@
     "createdAt": "Created At",
     "favorite": "Favorite",
     "views": "Views",
-    "anonymous": "Anonymous?"
+    "anonymous": "Anonymous?",
+    "showOnProfile": "On Profile"
   },
   "tableOptions": {
     "title": "Table Options",

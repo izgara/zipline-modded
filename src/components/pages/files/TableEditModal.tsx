@@ -25,6 +25,7 @@ export const FIELD_NAME_KEYS = {
   favorite: 'fields.favorite',
   views: 'fields.views',
   anonymous: 'fields.anonymous',
+  showOnProfile: 'fields.showOnProfile',
 } as const satisfies Record<FieldSettings['field'], string>;
 
 function SortableTableField({ item }: { item: FieldSettings }) {
