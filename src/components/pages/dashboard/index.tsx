@@ -4,6 +4,8 @@ import type { Response } from '@/lib/api/response';
 import { bytes } from '@/lib/bytes';
 import useLogin from '@/lib/client/hooks/useLogin';
 import { useSettingsStore } from '@/lib/client/store/settings';
+import { getAvailableQuickLinks } from '@/lib/quickLinks';
+import { QUICK_LINKS_ICONS } from '@/lib/client/quickLinks';
 import { isAdministrator } from '@/lib/role';
 import { Button, Group, Paper, ScrollArea, SimpleGrid, Skeleton, Table, Text, Title } from '@mantine/core';
 import {
@@ -12,9 +14,12 @@ import {
   IconFiles,
   IconGraphFilled,
   IconLink,
+  IconQuestionMark,
   IconStarFilled,
 } from '@tabler/icons-react';
 import { lazy, Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
+import SafeTrans from '@/components/SafeTrans';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 
@@ -23,23 +28,56 @@ const ClipManagerCard = lazy(() => import('./parts/ClipManagerCard'));
 const Recents = lazy(() => import('./parts/Recents'));
 
 export default function DashboardHome() {
+  const { t } = useTranslation(['dashboard', 'layout']);
   const { user } = useLogin();
   const { homeShowActivity, homeShowRecents, homeShowTypes } = useSettingsStore((state) => state.settings);
   const { data: stats, isLoading: statsLoading } = useSWR<Response['/api/user/stats']>('/api/user/stats');
 
   const config = useConfig();
+  const availableQuickLinks = getAvailableQuickLinks(config, user?.role);
+  const quickLinks = (user?.quickLinks ?? []).flatMap((id) => {
+    const link = availableQuickLinks.find((item) => item.id === id);
+    return link ? [link] : [];
+  });
 
   return (
     <>
       <Title>
-        Welcome back, <b>{user?.username}</b>
+        <SafeTrans
+          t={t}
+          i18nKey='welcome'
+          values={{ username: user?.username ?? '' }}
+          components={{ b: <b /> }}
+        />
       </Title>
 
       <Skeleton visible={statsLoading} animate>
         <Text size='sm' c='dimmed'>
-          You have <b>{statsLoading ? '...' : stats?.filesUploaded}</b> files uploaded.
+          <SafeTrans
+            t={t}
+            i18nKey='filesUploaded'
+            values={{ files: statsLoading ? '...' : stats?.filesUploaded }}
+            components={{ b: <b /> }}
+          />
         </Text>
       </Skeleton>
+
+      {quickLinks.length > 0 && (
+        <Group gap='xs' mt='sm' grow>
+          {quickLinks.map((link) => (
+            <Button
+              key={link.id}
+              component={Link}
+              to={link.path}
+              variant='filled'
+              size='lg'
+              leftSection={QUICK_LINKS_ICONS[link.id] || <IconQuestionMark size='1rem' />}
+            >
+              {t(`layout:titles.${link.id}`)}
+            </Button>
+          ))}
+        </Group>
+      )}
 
       {/* High on the page on purpose: the app is the reason most people are
           here, and it is the one thing on this screen they cannot find
@@ -58,7 +96,7 @@ export default function DashboardHome() {
           }
         >
           <Group mt='md' mb='xs' style={{ alignItems: 'center' }}>
-            <Title order={2}>Recent files</Title>
+            <Title order={2}>{t('recents.title')}</Title>
             <Button
               variant='outline'
               size='compact-xs'
@@ -66,7 +104,7 @@ export default function DashboardHome() {
               to='/dashboard/files'
               leftSection={<IconFiles size='1rem' />}
             >
-              View all files
+              {t('recents.viewAll')}
             </Button>
           </Group>
 
@@ -77,27 +115,35 @@ export default function DashboardHome() {
       {user?.quota && (user.quota.maxBytes || user.quota.maxFiles) ? (
         <Text size='sm' c='dimmed'>
           {user.quota.filesQuota === 'BY_BYTES' ? (
-            <>
-              You have used <b>{statsLoading ? '...' : bytes(stats!.storageUsed)}</b> out of{' '}
-              <b>{user.quota.maxBytes}</b> of storage
-            </>
+            <SafeTrans
+              t={t}
+              i18nKey='quota.bytes'
+              values={{ used: statsLoading ? '...' : bytes(stats!.storageUsed), max: user.quota.maxBytes }}
+              components={{ b: <b /> }}
+            />
           ) : (
-            <>
-              You have uploaded <b>{statsLoading ? '...' : stats?.filesUploaded}</b> files out of{' '}
-              <b>{user.quota.maxFiles}</b> files allowed.
-            </>
+            <SafeTrans
+              t={t}
+              i18nKey='quota.files'
+              values={{ files: statsLoading ? '...' : stats?.filesUploaded, max: user.quota.maxFiles }}
+              components={{ b: <b /> }}
+            />
           )}
         </Text>
       ) : null}
       {user?.quota && user.quota.maxUrls ? (
         <Text size='sm' c='dimmed'>
-          You have created <b>{statsLoading ? '...' : stats?.urlsCreated}</b> links out of{' '}
-          <b>{user.quota.maxUrls}</b> links allowed.
+          <SafeTrans
+            t={t}
+            i18nKey='quota.urls'
+            values={{ urls: statsLoading ? '...' : stats?.urlsCreated, max: user.quota.maxUrls }}
+            components={{ b: <b /> }}
+          />
         </Text>
       ) : null}
 
       <Group mt='md' style={{ alignItems: 'center' }}>
-        <Title order={2}>Stats</Title>
+        <Title order={2}>{t('stats.title')}</Title>
 
         {(!config.features?.metrics?.adminOnly || isAdministrator(user?.role)) && (
           <Button
@@ -107,13 +153,13 @@ export default function DashboardHome() {
             to='/dashboard/metrics'
             leftSection={<IconGraphFilled size='1rem' />}
           >
-            View instance metrics
+            {t('stats.viewMetrics')}
           </Button>
         )}
       </Group>
 
       <Text size='sm' c='dimmed' mb='xs'>
-        These statistics are based on your uploads only.
+        {t('stats.description')}
       </Text>
 
       {statsLoading ? (
@@ -124,15 +170,19 @@ export default function DashboardHome() {
         </SimpleGrid>
       ) : (
         <SimpleGrid cols={{ base: 1, md: 2, lg: 4 }} spacing={{ base: 'sm', md: 'md' }}>
-          <Stat Icon={IconFiles} title='Files uploaded' value={stats!.filesUploaded} />
-          <Stat Icon={IconStarFilled} title='Favorite files' value={stats!.favoriteFiles} />
-          <Stat Icon={IconDeviceSdCard} title='Storage used' value={bytes(stats!.storageUsed)} />
-          <Stat Icon={IconDeviceSdCard} title='Average storage used' value={bytes(stats!.avgStorageUsed)} />
-          <Stat Icon={IconEyeFilled} title='File views' value={stats!.views} />
-          <Stat Icon={IconEyeFilled} title='Average file views' value={Math.round(stats!.avgViews)} />
+          <Stat Icon={IconFiles} title={t('stats.filesUploaded')} value={stats!.filesUploaded} />
+          <Stat Icon={IconStarFilled} title={t('stats.favoriteFiles')} value={stats!.favoriteFiles} />
+          <Stat Icon={IconDeviceSdCard} title={t('stats.storageUsed')} value={bytes(stats!.storageUsed)} />
+          <Stat
+            Icon={IconDeviceSdCard}
+            title={t('stats.avgStorageUsed')}
+            value={bytes(stats!.avgStorageUsed)}
+          />
+          <Stat Icon={IconEyeFilled} title={t('stats.fileViews')} value={stats!.views} />
+          <Stat Icon={IconEyeFilled} title={t('stats.avgFileViews')} value={Math.round(stats!.avgViews)} />
 
-          <Stat Icon={IconLink} title='Links created' value={stats!.urlsCreated} />
-          <Stat Icon={IconLink} title='Total link views' value={Math.round(stats!.urlViews)} />
+          <Stat Icon={IconLink} title={t('stats.linksCreated')} value={stats!.urlsCreated} />
+          <Stat Icon={IconLink} title={t('stats.linkViews')} value={Math.round(stats!.urlViews)} />
         </SimpleGrid>
       )}
 
@@ -155,8 +205,8 @@ export default function DashboardHome() {
             <Table highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>File Type</Table.Th>
-                  <Table.Th>Count</Table.Th>
+                  <Table.Th>{t('fileTypes.columns.type')}</Table.Th>
+                  <Table.Th>{t('fileTypes.columns.count')}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -183,15 +233,15 @@ export default function DashboardHome() {
         homeShowTypes && (
           <>
             <Title order={3} mt='lg' mb='xs'>
-              File types
+              {t('fileTypes.title')}
             </Title>
             <Paper withBorder my='md'>
               <ScrollArea.Autosize mah={400} type='auto'>
                 <Table highlightOnHover>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th>File Type</Table.Th>
-                      <Table.Th>Count</Table.Th>
+                      <Table.Th>{t('fileTypes.columns.type')}</Table.Th>
+                      <Table.Th>{t('fileTypes.columns.count')}</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>

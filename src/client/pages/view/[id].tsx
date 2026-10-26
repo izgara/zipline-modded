@@ -10,6 +10,7 @@ import { formatRootUrl } from '@/lib/url';
 import {
   ActionIcon,
   Anchor,
+  Box,
   Button,
   Center,
   Collapse,
@@ -24,6 +25,7 @@ import {
 import { IconDownload, IconExternalLink, IconInfoCircleFilled } from '@tabler/icons-react';
 import * as sanitize from 'isomorphic-dompurify';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { getFile } from '../../ssr-view/server';
 
@@ -39,19 +41,21 @@ type SsrData = {
 };
 
 export default function ViewFileId() {
+  const { t } = useTranslation('view');
   const data = useSsrData<SsrData>();
   const [passwordValue, setPassword] = useState<string>('');
   const [passwordError, setPasswordError] = useState<string>('');
   const [detailsOpen, setDetailsOpen] = useState<boolean>(false);
+  const [scrollParent, setScrollParent] = useState<HTMLDivElement | null>(null);
 
-  useTitle(data?.file.originalName ?? data?.file.name ?? 'View File');
+  useTitle(data?.file.originalName ?? data?.file.name ?? t('file.pageTitle'));
 
   if (!data) return null;
 
   const { file, password, code, user, host, metrics, filesRoute, token } = data;
 
   return password && !token ? (
-    <Modal onClose={() => {}} opened={true} withCloseButton={false} centered title='Password required'>
+    <Modal onClose={() => {}} opened={true} withCloseButton={false} centered title={t('password.title')}>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -66,12 +70,12 @@ export default function ViewFileId() {
             const json = (await res.json()) as { token: string };
             window.location.replace(formatRootUrl('/view', file.name!, { token: json.token }));
           } else {
-            setPasswordError('Invalid password');
+            setPasswordError(t('password.invalid'));
           }
         }}
       >
         <PasswordInput
-          description='This file is password protected, enter password to view it'
+          description={t('password.fileDescription')}
           required
           mb='sm'
           value={passwordValue}
@@ -86,13 +90,13 @@ export default function ViewFileId() {
           type='submit'
           disabled={passwordValue.trim().length === 0}
         >
-          Verify
+          {t('password.verify')}
         </Button>
       </form>
     </Modal>
   ) : code ? (
-    <>
-      <Paper withBorder style={{ borderTop: 0, borderLeft: 0, borderRight: 0 }}>
+    <Box h='100dvh' style={{ display: 'flex', flexDirection: 'column' }}>
+      <Paper withBorder radius={0} style={{ borderTop: 0, borderLeft: 0, borderRight: 0, flexShrink: 0 }}>
         <Group justify='space-between' py={5} px='xs'>
           <Text c='dimmed'>{file.originalName ?? file.name}</Text>
 
@@ -114,7 +118,7 @@ export default function ViewFileId() {
         </Group>
       </Paper>
 
-      <Collapse expanded={detailsOpen}>
+      <Collapse expanded={detailsOpen} style={{ flexShrink: 0, maxHeight: '50%', overflowY: 'auto' }}>
         <Paper m='md' p='md' withBorder>
           {user?.view!.content && (
             <Typography>
@@ -143,10 +147,18 @@ export default function ViewFileId() {
         </Paper>
       </Collapse>
 
-      <Center m='sm'>
-        <DashboardFileType file={file as unknown as File} token={token} show code={code} fullscreen />
-      </Center>
-    </>
+      <Box ref={setScrollParent} pos='relative' style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+        <DashboardFileType
+          file={file as unknown as File}
+          token={token}
+          show
+          code={code}
+          fullscreen
+          unframed
+          scrollParent={scrollParent}
+        />
+      </Box>
+    </Box>
   ) : (
     <>
       <Center h='100%'>
@@ -166,7 +178,7 @@ export default function ViewFileId() {
               {user?.view!.showFolder &&
                 file.folder &&
                 (file.folder.public ? (
-                  <Tooltip label='View folder'>
+                  <Tooltip label={t('file.viewFolder')}>
                     <Anchor
                       component={Link}
                       ml='sm'
@@ -189,30 +201,32 @@ export default function ViewFileId() {
               )}
             </Group>
 
-            <ActionIcon.Group>
-              <Tooltip label='View raw file'>
-                <ActionIcon
-                  size='md'
-                  variant='outline'
-                  component={Link}
-                  to={formatRootUrl('/raw', file.name!, { token })}
-                  target='_blank'
-                >
-                  <IconExternalLink size='1rem' />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label='Download file'>
-                <ActionIcon
-                  size='md'
-                  variant='outline'
-                  component={Link}
-                  to={formatRootUrl('/raw', file.name!, { download: 'true', token })}
-                  target='_blank'
-                >
-                  <IconDownload size='1rem' />
-                </ActionIcon>
-              </Tooltip>
-            </ActionIcon.Group>
+            <Group gap='xs'>
+              <ActionIcon.Group>
+                <Tooltip label={t('file.viewRaw')}>
+                  <ActionIcon
+                    size='md'
+                    variant='outline'
+                    component={Link}
+                    to={formatRootUrl('/raw', file.name!, { token })}
+                    target='_blank'
+                  >
+                    <IconExternalLink size='1rem' />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label={t('file.download')}>
+                  <ActionIcon
+                    size='md'
+                    variant='outline'
+                    component={Link}
+                    to={formatRootUrl('/raw', file.name!, { download: 'true', token })}
+                    target='_blank'
+                  >
+                    <IconDownload size='1rem' />
+                  </ActionIcon>
+                </Tooltip>
+              </ActionIcon.Group>
+            </Group>
           </Group>
 
           <DashboardFileType allowZoom file={file as unknown as File} token={token} show />

@@ -50,16 +50,20 @@ export default typedPlugin(
             where: { path: id },
             with: {
               file: {
-                columns: { userId: true },
+                columns: { userId: true, deletesAt: true, maxViews: true, views: true },
                 with: { user: { columns: { id: true, role: true } } },
               },
             },
           });
 
-          if (!thumbnail) throw new ApiError(9002);
-          if (thumbnail.file && thumbnail.file.userId !== req.user.id) {
-            if (!canInteract(req.user.role, thumbnail.file.user?.role)) throw new ApiError(9002);
+          if (!thumbnail?.file) throw new ApiError(9002);
+          const { file } = thumbnail;
+          if (file.userId !== req.user.id) {
+            if (!canInteract(req.user.role, file.user?.role)) throw new ApiError(9002);
           }
+
+          if (file.deletesAt && file.deletesAt <= new Date()) throw new ApiError(9002);
+          if (file.maxViews && file.views >= file.maxViews) throw new ApiError(9002);
 
           const size = await datasource.size(thumbnail.path);
           if (!size) throw new ApiError(9002);
@@ -135,23 +139,17 @@ export default typedPlugin(
               : undefined,
         };
 
-        if (req.headers.range) {
-          const [start, end] = parseRange(req.headers.range, size);
-          if (start >= size || end >= size) {
-            const buf = await datasource.get(file.name);
-            if (!buf) throw new ApiError(9002);
-
+        if (req.headers.range !== undefined) {
+          const range = parseRange(req.headers.range, size);
+          if (!range) {
             return res
-              .type(contentType)
-              .headers({
-                'Content-Length': size,
-                ...commonHeaders,
-              })
+              .headers({ 'Content-Range': `bytes */${size}`, 'Content-Length': 0 })
               .status(416)
-              .send(buf);
+              .send();
           }
 
-          const buf = await datasource.range(file.name, start || 0, end);
+          const [start, end] = range;
+          const buf = await datasource.range(file.name, start, end);
           if (!buf) throw new ApiError(9002);
 
           return res

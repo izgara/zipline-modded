@@ -5,14 +5,14 @@ import { config } from '@/lib/config';
 import { db } from '@/lib/db';
 import { removeFiles } from '@/lib/db/models/file';
 import { files, urls } from '@/lib/db/schema';
-import { and, gte, inArray, isNotNull } from 'drizzle-orm';
+import { and, gt, gte, inArray } from 'drizzle-orm';
 
 export default function maxViews() {
   return async function (this: IntervalTask) {
     const expiredFiles = await db
       .select({ id: files.id, name: files.name, size: files.size })
       .from(files)
-      .where(and(isNotNull(files.maxViews), gte(files.views, files.maxViews)));
+      .where(and(gt(files.maxViews, 0), gte(files.views, files.maxViews)));
 
     this.logger.debug(`found ${expiredFiles.length} expired files`, {
       files: expiredFiles.map((file) => file.name),
@@ -21,7 +21,7 @@ export default function maxViews() {
     const expiredUrls = await db
       .select({ id: urls.id, destination: urls.destination })
       .from(urls)
-      .where(and(isNotNull(urls.maxViews), gte(urls.views, urls.maxViews)));
+      .where(and(gt(urls.maxViews, 0), gte(urls.views, urls.maxViews)));
 
     this.logger.debug(`found ${expiredUrls.length} expired urls`, {
       dests: expiredUrls.map((url) => url.destination),
@@ -32,9 +32,11 @@ export default function maxViews() {
       return;
     }
 
+    const deletedFiles: typeof expiredFiles = [];
     for (const file of expiredFiles) {
       try {
         await datasource.delete(file.name);
+        deletedFiles.push(file);
       } catch {
         this.logger.error('failed to delete file from datasource', {
           file: file.name,
@@ -44,7 +46,7 @@ export default function maxViews() {
 
     const [fileCount, urlCount] = await db.transaction(async (tx) => {
       const fileCount = await removeFiles(
-        expiredFiles.map((file) => file.id),
+        deletedFiles.map((file) => file.id),
         tx,
       );
       let urlCount = 0;
@@ -65,8 +67,8 @@ export default function maxViews() {
 
     if (fileCount)
       this.logger.info(`deleted ${fileCount} files due to max views`, {
-        size: bytes(expiredFiles.reduce((acc, file) => acc + file.size, 0)),
-        files: expiredFiles.map((file) => file.name),
+        size: bytes(deletedFiles.reduce((acc, file) => acc + file.size, 0)),
+        files: deletedFiles.map((file) => file.name),
       });
 
     if (urlCount)

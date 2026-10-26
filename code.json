@@ -117,12 +117,14 @@
   {
     "ext": "conf",
     "mime": "text/x-zipline-nginx-conf",
-    "name": "NGINX Config File"
+    "name": "NGINX Config File",
+    "language": "nginx"
   },
   {
     "ext": "pl",
     "mime": "text/x-zipline-perl",
-    "name": "Perl"
+    "name": "Perl",
+    "language": "perl"
   },
   {
     "ext": "r",
@@ -152,7 +154,8 @@
   {
     "ext": "ex",
     "mime": "text/x-zipline-elixir",
-    "name": "Elixir"
+    "name": "Elixir",
+    "language": "elixir"
   },
   {
     "ext": "vim",
@@ -162,7 +165,8 @@
   {
     "ext": "m",
     "mime": "text/x-zipline-matlab",
-    "name": "MATLAB"
+    "name": "MATLAB",
+    "language": "matlab"
   },
   {
     "ext": "dart",
@@ -203,6 +207,136 @@
     "ext": "tex",
     "mime": "text/x-zipline-latex",
     "name": "LaTeX (KaTeX)"
+  },
+  {
+    "ext": "cs",
+    "mime": "text/x-zipline-csharp",
+    "name": "C#"
+  },
+  {
+    "ext": "nix",
+    "mime": "text/x-zipline-nix",
+    "name": "Nix"
+  },
+  {
+    "ext": "patch",
+    "mime": "text/x-zipline-patch",
+    "name": "Patch",
+    "language": "diff"
+  },
+  {
+    "ext": "diff",
+    "mime": "text/x-zipline-diff",
+    "name": "Diff"
+  },
+  {
+    "ext": "tsx",
+    "mime": "text/x-zipline-tsx",
+    "name": "TSX"
+  },
+  {
+    "ext": "xml",
+    "mime": "text/x-zipline-xml",
+    "name": "XML"
+  },
+  {
+    "ext": "toml",
+    "mime": "text/x-zipline-toml",
+    "name": "TOML"
+  },
+  {
+    "ext": "yml",
+    "mime": "text/x-zipline-yml",
+    "name": "YAML"
+  },
+  {
+    "ext": "graphql",
+    "mime": "text/x-zipline-graphql",
+    "name": "GraphQL"
+  },
+  {
+    "ext": "proto",
+    "mime": "text/x-zipline-protobuf",
+    "name": "Protocol Buffers"
+  },
+  {
+    "ext": "cmake",
+    "mime": "text/x-zipline-cmake",
+    "name": "CMake"
+  },
+  {
+    "ext": "mk",
+    "mime": "text/x-zipline-makefile",
+    "name": "Makefile",
+    "language": "make"
+  },
+  {
+    "ext": "bat",
+    "mime": "text/x-zipline-dos",
+    "name": "Batch"
+  },
+  {
+    "ext": "less",
+    "mime": "text/x-zipline-less",
+    "name": "Less"
+  },
+  {
+    "ext": "clj",
+    "mime": "text/x-zipline-clojure",
+    "name": "Clojure"
+  },
+  {
+    "ext": "erl",
+    "mime": "text/x-zipline-erlang",
+    "name": "Erlang"
+  },
+  {
+    "ext": "ml",
+    "mime": "text/x-zipline-ocaml",
+    "name": "OCaml",
+    "language": "ocaml"
+  },
+  {
+    "ext": "fs",
+    "mime": "text/x-zipline-fsharp",
+    "name": "F#"
+  },
+  {
+    "ext": "lisp",
+    "mime": "text/x-zipline-lisp",
+    "name": "Lisp"
+  },
+  {
+    "ext": "elm",
+    "mime": "text/x-zipline-elm",
+    "name": "Elm"
+  },
+  {
+    "ext": "vb",
+    "mime": "text/x-zipline-vbnet",
+    "name": "Visual Basic .NET"
+  },
+  {
+    "ext": "d",
+    "mime": "text/x-zipline-d",
+    "name": "D"
+  },
+  {
+    "ext": "pas",
+    "mime": "text/x-zipline-delphi",
+    "name": "Pascal",
+    "language": "pascal"
+  },
+  {
+    "ext": "f90",
+    "mime": "text/x-zipline-fortran",
+    "name": "Fortran"
+  },
+  {
+    "ext": "v",
+    "mime": "text/x-zipline-verilog",
+    "name": "Verilog",
+    "language": "verilog"
   },
   {
     "name": "Plain Text",

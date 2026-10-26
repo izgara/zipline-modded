@@ -11,7 +11,7 @@ import { Response } from '@/lib/api/response';
 import { bytes } from '@/lib/bytes';
 import { useFolders } from '@/lib/client/hooks/useFolders';
 import { useFileNavStore } from '@/lib/client/store/fileNav';
-import { NAMES, useFileTableSettingsStore } from '@/lib/client/store/fileTableSettings';
+import { useFileTableSettingsStore } from '@/lib/client/store/fileTableSettings';
 import { useSettingsStore } from '@/lib/client/store/settings';
 import { type File } from '@/lib/db/models/file';
 import { Tag } from '@/lib/db/models/tag';
@@ -50,11 +50,13 @@ import {
 import { DataTable } from 'mantine-datatable';
 import { parseAsInteger, useQueryState } from 'nuqs';
 import { lazy, useEffect, useMemo, useReducer, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import SafeTrans from '@/components/SafeTrans';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { useShallow } from 'zustand/shallow';
 import { DashboardFilesModals, DashboardFilesModalsUpdate } from '..';
-import TableEditModal from '../TableEditModal';
+import TableEditModal, { FIELD_NAME_KEYS } from '../TableEditModal';
 import { bulkCopyLinks, bulkDelete, bulkFavorite } from '../bulk';
 import TagPill from '../tags/TagPill';
 import { useApiPagination } from '../useApiPagination';
@@ -67,6 +69,12 @@ type ReducerQuery = {
 };
 
 const PER_PAGE_OPTIONS = [10, 20, 50, 70, 100];
+
+const SEARCH_PLACEHOLDER_KEYS = {
+  name: 'table.search.name',
+  originalName: 'table.search.originalName',
+  type: 'table.search.type',
+} as const;
 
 function SearchFilter({
   setSearchField,
@@ -82,8 +90,10 @@ function SearchFilter({
   };
   setSearchField: (...args: any) => void;
   setSearchQuery: (...args: any) => void;
-  field: 'name' | 'originalName' | 'type' | 'id';
+  field: 'name' | 'originalName' | 'type';
 }) {
+  const { t } = useTranslation('files');
+
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchField(field);
 
@@ -95,8 +105,8 @@ function SearchFilter({
 
   return (
     <TextInput
-      label={NAMES[field as keyof typeof NAMES]}
-      placeholder={`Search by ${NAMES[field as keyof typeof NAMES].toLowerCase()}`}
+      label={t(FIELD_NAME_KEYS[field])}
+      placeholder={t(SEARCH_PLACEHOLDER_KEYS[field])}
       value={searchQuery[field]}
       onChange={onChange}
       size='sm'
@@ -118,6 +128,7 @@ function TagsFilter({
   setSearchField: (...args: any) => void;
   setSearchQuery: (...args: any) => void;
 }) {
+  const { t } = useTranslation('files');
   const combobox = useCombobox();
   const { data: tags } = useSWR<Extract<Response['/api/user/tags'], Tag[]>>('/api/user/tags');
 
@@ -146,7 +157,7 @@ function TagsFilter({
       <Combobox.DropdownTarget>
         <PillsInput onBlur={() => triggerSave()} pointer onClick={() => combobox.toggleDropdown()} w={200}>
           <Pill.Group>
-            {values.length > 0 ? values : <Input.Placeholder>Pick one or more tags</Input.Placeholder>}
+            {values.length > 0 ? values : <Input.Placeholder>{t('table.tagsPlaceholder')}</Input.Placeholder>}
 
             <Combobox.EventsTarget>
               <PillsInput.Field
@@ -197,6 +208,7 @@ export default function FileTable({
   modals?: Partial<DashboardFilesModals>;
   setModals?: DashboardFilesModalsUpdate;
 }) {
+  const { t } = useTranslation(['files', 'common']);
   const clipboard = useClipboard();
   const warnDeletion = useSettingsStore((state) => state.settings.warnDeletion);
 
@@ -288,6 +300,7 @@ export default function FileTable({
   const FIELDS = [
     {
       accessor: 'name',
+      title: t('table.columns.name'),
       sortable: true,
       filter: (
         <SearchFilter
@@ -301,6 +314,7 @@ export default function FileTable({
     },
     {
       accessor: 'originalName',
+      title: t('table.columns.originalName'),
       sortable: true,
       filter: (
         <SearchFilter
@@ -314,6 +328,7 @@ export default function FileTable({
     },
     {
       accessor: 'tags',
+      title: t('table.columns.tags'),
       sortable: false,
       width: 200,
       render: (file: File) => (
@@ -336,6 +351,7 @@ export default function FileTable({
     },
     {
       accessor: 'type',
+      title: t('table.columns.type'),
       sortable: true,
       filter: (
         <SearchFilter
@@ -347,17 +363,24 @@ export default function FileTable({
       ),
       filtering: searchField === 'type' && searchQuery.type.trim() !== '',
     },
-    { accessor: 'size', sortable: true, render: (file: File) => bytes(file.size) },
+    {
+      accessor: 'size',
+      title: t('table.columns.size'),
+      sortable: true,
+      render: (file: File) => bytes(file.size),
+    },
     {
       accessor: 'createdAt',
+      title: t('table.columns.createdAt'),
       sortable: true,
       render: (file: File) => <RelativeDate date={file.createdAt} />,
     },
     {
       accessor: 'favorite',
       sortable: true,
-      title: 'Favorite?',
-      render: (file: File) => (file.favorite ? <Text c='yellow'>Yes</Text> : 'No'),
+      title: t('table.columns.favorite'),
+      render: (file: File) =>
+        file.favorite ? <Text c='yellow'>{t('common:actions.yes')}</Text> : t('common:actions.no'),
     },
     {
       accessor: 'showOnProfile',
@@ -367,19 +390,22 @@ export default function FileTable({
     },
     {
       accessor: 'views',
+      title: t('table.columns.views'),
       sortable: true,
       render: (file: File) => file.views,
     },
     {
       accessor: 'id',
+      title: t('table.columns.id'),
       hidden: searchField !== 'id' || searchQuery.id.trim() === '',
       filtering: searchField === 'id' && searchQuery.id.trim() !== '',
     },
     {
       accessor: 'anonymous',
       sortable: true,
-      title: 'Anonymous?',
-      render: (file: File) => (file.anonymous ? <Text c='green'>Yes</Text> : 'No'),
+      title: t('table.columns.anonymous'),
+      render: (file: File) =>
+        file.anonymous ? <Text c='green'>{t('common:actions.yes')}</Text> : t('common:actions.no'),
     },
   ];
 
@@ -414,8 +440,12 @@ export default function FileTable({
         <Collapse expanded={selectedFiles.length > 0}>
           <Paper withBorder p='sm' my='sm'>
             <Text size='sm' c='dimmed' mb='xs'>
-              Selections are saved across page changes. Currently selected <b>{selectedFiles.length}</b> file
-              {selectedFiles.length > 1 ? 's' : ''}.
+              <SafeTrans
+                t={t}
+                i18nKey='table.selection.summary'
+                count={selectedFiles.length}
+                components={{ b: <b /> }}
+              />
             </Text>
 
             <Group>
@@ -431,7 +461,7 @@ export default function FileTable({
                     )
                   }
                 >
-                  Delete files
+                  {t('table.selection.delete')}
                 </Button>
 
                 <Button
@@ -445,7 +475,7 @@ export default function FileTable({
                     )
                   }
                 >
-                  {unfavoriteAll ? 'Unfavorite' : 'Favorite'} files
+                  {unfavoriteAll ? t('table.selection.unfavorite') : t('table.selection.favorite')}
                 </Button>
 
                 <Button
@@ -453,7 +483,7 @@ export default function FileTable({
                   leftSection={<IconCopy size='1rem' />}
                   onClick={() => bulkCopyLinks(selectedFiles.map((x) => x.url!))}
                 >
-                  Copy file links
+                  {t('table.selection.copyLinks')}
                 </Button>
 
                 {!id && (
@@ -483,7 +513,7 @@ export default function FileTable({
                           combobox.closeDropdown();
                           setFolderSearch('');
                         }}
-                        placeholder='Add to folder...'
+                        placeholder={t('table.selection.addToFolder')}
                         rightSectionPointerEvents='none'
                       />
                     </Combobox.Target>
@@ -503,7 +533,7 @@ export default function FileTable({
                 justify='right'
                 ml='auto'
               >
-                Clear selection
+                {t('table.selection.clear')}
               </Button>
             </Group>
           </Paper>
@@ -513,7 +543,7 @@ export default function FileTable({
           <Collapse expanded={modals.idSearch}>
             <Paper withBorder p='sm' mt='sm'>
               <TextInput
-                placeholder='Search by ID'
+                placeholder={t('table.searchById')}
                 value={searchQuery.id}
                 onChange={(e) => {
                   setSearchField('id');
@@ -534,21 +564,23 @@ export default function FileTable({
           withTableBorder
           minHeight={200}
           records={data?.page ?? []}
-          noRecordsText='No files'
+          noRecordsText={t('table.noRecords')}
+          recordsPerPageLabel={t('table.recordsPerPage')}
           columns={[
             ...columns,
             {
               accessor: 'actions',
+              title: t('table.columns.actions'),
               textAlign: 'right',
               render: (file) => (
                 <Group gap='sm' justify='right' wrap='nowrap'>
-                  <Tooltip label='More details'>
+                  <Tooltip label={t('table.actions.details')}>
                     <ActionIcon>
                       <IconFile size='1rem' />
                     </ActionIcon>
                   </Tooltip>
 
-                  <Tooltip label='View file in new tab'>
+                  <Tooltip label={t('table.actions.view')}>
                     <Link to={formatRootUrl('/view', file.name)} target='_blank'>
                       <ActionIcon color='blue'>
                         <IconExternalLink size='1rem' />
@@ -556,7 +588,7 @@ export default function FileTable({
                     </Link>
                   </Tooltip>
 
-                  <Tooltip label='Copy file link to clipboard'>
+                  <Tooltip label={t('table.actions.copy')}>
                     <ActionIcon
                       onClick={(e) => {
                         e.stopPropagation();
@@ -567,7 +599,7 @@ export default function FileTable({
                     </ActionIcon>
                   </Tooltip>
 
-                  <Tooltip label='Download file'>
+                  <Tooltip label={t('table.actions.download')}>
                     <ActionIcon
                       color='gray'
                       onClick={(e) => {
@@ -593,7 +625,7 @@ export default function FileTable({
                     </Tooltip>
                   )}
 
-                  <Tooltip label='Delete file'>
+                  <Tooltip label={t('table.actions.delete')}>
                     <ActionIcon
                       color='red'
                       onClick={(e) => {
@@ -626,7 +658,9 @@ export default function FileTable({
           onCellClick={({ record }) => setCurrent(record.id)}
           selectedRecords={selectedFiles}
           onSelectedRecordsChange={setSelectedFiles}
-          paginationText={({ from, to, totalRecords }) => `${from} - ${to} / ${totalRecords} files`}
+          paginationText={({ from, to, totalRecords }) =>
+            t('views.pagination', { from, to, total: totalRecords })
+          }
         />
       </Box>
     </>

@@ -2,6 +2,8 @@ import { ApiError } from '@/lib/api/errors';
 import { db, type DbClient } from '@/lib/db';
 import type { Role } from '@/lib/db/enums';
 import { users } from '@/lib/db/schema';
+import { QUICK_LINKS } from '@/lib/quickLinks';
+import { discordComponentEmbedSchema } from '@/lib/discordComponentEmbed';
 import { eq, isNotNull } from 'drizzle-orm';
 import { createSelectSchema } from 'drizzle-orm/zod';
 import { z } from 'zod';
@@ -9,6 +11,10 @@ import { oauthProviderSchema } from './oauth';
 import { userPasskeySchema } from './passkey';
 import { userQuotaSchema } from './quota';
 import { userSessionSchema } from './session';
+
+export const userQuickLinksSchema = z
+  .array(z.enum(QUICK_LINKS.map((link) => link.id)))
+  .refine((links) => new Set(links).size === links.length, 'Quick links must be unique');
 
 export const userViewSchema = z
   .object({
@@ -25,6 +31,7 @@ export const userViewSchema = z
     embedDescription: z.string().nullish(),
     embedColor: z.string().nullish(),
     embedSiteName: z.string().nullish(),
+    discordComponentEmbed: discordComponentEmbedSchema.nullish(),
   })
   .partial();
 
@@ -39,6 +46,7 @@ const userScalarSchema = createSelectSchema(users, { view: userViewSchema }).pic
 });
 
 export const userSchema = userScalarSchema.partial({ avatar: true }).extend({
+  quickLinks: userQuickLinksSchema,
   sessions: z.array(userSessionSchema),
   oauthProviders: z.array(oauthProviderSchema),
   totpEnabled: z.boolean(),
@@ -47,6 +55,7 @@ export const userSchema = userScalarSchema.partial({ avatar: true }).extend({
 });
 
 export const limitedUserSchema = userSchema.omit({
+  quickLinks: true,
   oauthProviders: true,
   totpEnabled: true,
   passkeys: true,
@@ -75,10 +84,20 @@ const publicUserColumnsWithAvatar = {
   avatar: true,
 } as const;
 
+const authenticatedUserColumns = {
+  ...publicUserColumns,
+  quickLinks: true,
+} as const;
+
 const totpEnabled = (user: typeof users) => isNotNull(user.totpSecret).mapWith(Boolean);
 
 const userRelations = {
-  sessions: true,
+  sessions: {
+    columns: {
+      oauthProvider: false,
+      oidcIdToken: false,
+    },
+  },
   oauthProviders: {
     columns: {
       accessToken: false,
@@ -95,7 +114,7 @@ function parseView<T extends { view: unknown }>(row: T) {
 
 async function findUser(where: UserWhere, client: DbClient): Promise<User | null> {
   const row = await client.query.users.findFirst({
-    columns: publicUserColumns,
+    columns: authenticatedUserColumns,
     extras: { totpEnabled },
     where,
     with: userRelations,
@@ -117,7 +136,7 @@ export async function getUser(id: string, client: DbClient = db) {
 
 export async function getLoginUser(username: string, client: DbClient = db): Promise<LoginUser | null> {
   const row = await client.query.users.findFirst({
-    columns: { ...publicUserColumns, password: true, totpSecret: true },
+    columns: { ...authenticatedUserColumns, password: true, totpSecret: true },
     extras: { totpEnabled },
     where: { username },
     with: userRelations,
@@ -131,7 +150,7 @@ export async function getUserByToken(token: string, client: DbClient = db) {
 
 export async function getUserBySession(sessionId: string, client: DbClient = db): Promise<User | null> {
   const user = await client.query.users.findFirst({
-    columns: publicUserColumns,
+    columns: authenticatedUserColumns,
     extras: { totpEnabled },
     where: { sessions: { id: sessionId } },
     with: userRelations,
@@ -172,7 +191,7 @@ export async function listUserDetails(
   client: DbClient = db,
 ): Promise<User[]> {
   const rows = await client.query.users.findMany({
-    columns: options.avatar ? publicUserColumnsWithAvatar : publicUserColumns,
+    columns: options.avatar ? { ...authenticatedUserColumns, avatar: true } : authenticatedUserColumns,
     extras: { totpEnabled },
     where: options.id ? { id: options.id } : undefined,
     with: userRelations,

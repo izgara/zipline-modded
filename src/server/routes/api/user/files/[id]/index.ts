@@ -10,6 +10,7 @@ import {
   fileRelations,
   fileSchema,
   getFile,
+  lockFiles,
   removeFile,
   type FileUpdate,
 } from '@/lib/db/models/file';
@@ -20,7 +21,7 @@ import { zValidatePath } from '@/lib/validation';
 import { userMiddleware } from '@/server/middleware/user';
 import typedPlugin from '@/server/typedPlugin';
 import z from 'zod';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, ne } from 'drizzle-orm';
 
 export type ApiUserFilesIdResponse = File;
 
@@ -76,7 +77,16 @@ export default typedPlugin(
             originalName: z.string().trim().min(1).optional().transform(zValidatePath),
             type: z.string().min(1).optional(),
             tags: z.array(z.string()).optional(),
-            name: z.string().trim().min(1).optional().transform(zValidatePath),
+            name: z
+              .string()
+              .trim()
+              .min(1)
+              .refine(
+                (name) => !name.toLowerCase().startsWith('.thumbnail'),
+                'File name uses a reserved prefix.',
+              )
+              .optional()
+              .transform(zValidatePath),
             anonymous: z.boolean().optional(),
           }),
           response: {
@@ -123,23 +133,27 @@ export default typedPlugin(
           if (tagCount !== req.body.tags.length) throw new ApiError(1032);
         }
 
-        if (req.body.name !== undefined && req.body.name !== file.name) {
-          const name = req.body.name!;
-          const [existingFile] = await db.select({ id: files.id }).from(files).where(eq(files.name, name));
-
-          if (existingFile && existingFile.id !== file.id) throw new ApiError(1014);
-
-          data.name = name;
-
-          try {
-            await datasource.rename(file.name, data.name);
-          } catch (error) {
-            logger.error('Failed to rename file in datasource', { error });
-            throw new ApiError(6002);
-          }
-        }
-
         const newFile = await db.transaction(async (tx) => {
+          let currentName: string | undefined;
+          if (req.body.name !== undefined) {
+            await lockFiles(tx);
+
+            const [current] = await tx.select({ name: files.name }).from(files).where(eq(files.id, file.id));
+            if (!current) return null;
+            currentName = current.name;
+
+            if (req.body.name !== currentName) {
+              const [existing] = await tx
+                .select({ id: files.id })
+                .from(files)
+                .where(and(eq(files.name, req.body.name), ne(files.id, file.id)))
+                .limit(1);
+              if (existing) throw new ApiError(1014);
+
+              data.name = req.body.name;
+            }
+          }
+
           if (Object.keys(data).length) {
             const [updated] = await tx
               .update(files)
@@ -160,11 +174,22 @@ export default typedPlugin(
             }
           }
 
-          return tx.query.files.findFirst({
+          const updatedFile = await tx.query.files.findFirst({
             columns: fileColumns,
             where: { id: file.id },
             with: fileRelations,
           });
+
+          if (updatedFile && data.name !== undefined && currentName !== undefined) {
+            try {
+              await datasource.rename(currentName, data.name);
+            } catch (error) {
+              logger.error('Failed to rename file in datasource', { error });
+              throw new ApiError(6002);
+            }
+          }
+
+          return updatedFile;
         });
         if (!newFile) throw new ApiError(4000);
 

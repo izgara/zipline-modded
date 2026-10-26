@@ -1,5 +1,6 @@
 import { createId } from '@paralleldrive/cuid2';
 import type { Json } from 'drizzle-orm';
+import type { QuickLinkId } from '@/lib/quickLinks';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
   bigint,
@@ -146,6 +147,7 @@ export const zipline = pgTable(
     oauthOidcAuthorizeUrl: text(),
     oauthOidcTokenUrl: text(),
     oauthOidcUserinfoUrl: text(),
+    oauthOidcEndSessionUrl: text(),
     oauthOidcRedirectUri: text(),
 
     mfaTotpEnabled: boolean().default(false).notNull(),
@@ -204,6 +206,7 @@ export const users = pgTable(
     token: text().notNull(),
     role: role().default('USER').notNull(),
     view: jsonb().$type<Record<string, Json | undefined>>().default({}).notNull(),
+    quickLinks: jsonb().$type<QuickLinkId[]>().default([]).notNull(),
     totpSecret: text(),
   },
   (table) => [
@@ -353,6 +356,8 @@ export const userSessions = pgTable(
     ua: text().notNull(),
     client: text().notNull(),
     device: text().notNull(),
+    oauthProvider: oauthProviderType(),
+    oidcIdToken: text(),
     userId: text()
       .notNull()
       .references(() => users.id, {

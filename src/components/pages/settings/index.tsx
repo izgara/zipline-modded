@@ -2,10 +2,12 @@ import { useConfig } from '@/components/ConfigProvider';
 import { eitherTrue } from '@/lib/primitive';
 import { Group, SimpleGrid, Stack, Title } from '@mantine/core';
 import { lazy } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const SettingsAvatar = lazy(() => import('./parts/SettingsAvatar'));
 const SettingsProfile = lazy(() => import('./parts/SettingsProfile'));
 const SettingsDashboard = lazy(() => import('./parts/SettingsDashboard'));
+const SettingsQuickLinks = lazy(() => import('./parts/SettingsQuickLinks'));
 const SettingsFileView = lazy(() => import('./parts/SettingsFileView'));
 const SettingsGenerators = lazy(() => import('./parts/SettingsGenerators'));
 const SettingsMfa = lazy(() => import('./parts/SettingsMfa'));
@@ -16,11 +18,12 @@ const SettingsOAuth = lazy(() => import('./parts/SettingsOAuth'));
 
 export default function DashboardSettings() {
   const config = useConfig();
+  const { t } = useTranslation('settings');
 
   return (
     <>
       <Group gap='sm'>
-        <Title order={1}>Settings</Title>
+        <Title order={1}>{t('title')}</Title>
       </Group>
 
       <SimpleGrid mt='md' cols={{ base: 1, md: 2 }} spacing='lg'>
@@ -36,6 +39,8 @@ export default function DashboardSettings() {
         <SettingsProfile />
 
         <SettingsFileView />
+
+        <SettingsQuickLinks />
 
         {eitherTrue(
           config.oauthEnabled.discord,

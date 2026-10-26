@@ -19,9 +19,11 @@ import { useForm } from '@mantine/form';
 import { showNotification } from '@mantine/notifications';
 import { IconTag, IconTagOff, IconTextRecognition } from '@tabler/icons-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { mutate } from 'swr';
 
 export default function CreateTagModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation('files');
   const [icon, setIcon] = useState<File | null>(null);
   const [iconPreview, setIconPreview] = useState<string | null>(null);
 
@@ -34,7 +36,7 @@ export default function CreateTagModal({ open, onClose }: { open: boolean; onClo
       color: '',
     },
     validate: {
-      name: (value) => (value.length < 1 ? 'Name is required' : null),
+      name: (value) => (value.length < 1 ? t('tags.form.name.required') : null),
     },
   });
 
@@ -47,7 +49,7 @@ export default function CreateTagModal({ open, onClose }: { open: boolean; onClo
     const color = values.color.trim() === '' ? colorHash(values.name) : values.color.trim();
 
     if (!color.startsWith('#')) {
-      return form.setFieldError('color', 'Color must start with #');
+      return form.setFieldError('color', t('tags.form.color.invalid'));
     }
 
     const { data, error } = await fetchApi<Extract<Response['/api/user/tags'], Tag>>(
@@ -62,15 +64,15 @@ export default function CreateTagModal({ open, onClose }: { open: boolean; onClo
 
     if (error) {
       showNotification({
-        title: 'Failed to create tag',
+        title: t('tags.notifications.createFailed'),
         message: error.error,
         color: 'red',
         icon: <IconTagOff size='1rem' />,
       });
     } else {
       showNotification({
-        title: 'Created tag',
-        message: `Created tag ${data!.name}`,
+        title: t('tags.notifications.created'),
+        message: t('tags.notifications.createdMessage', { name: data!.name }),
         color: data!.color,
         icon: <IconTag size='1rem' />,
       });
@@ -84,15 +86,19 @@ export default function CreateTagModal({ open, onClose }: { open: boolean; onClo
   };
 
   return (
-    <Modal opened={open} onClose={onClose} title='Create new tag' zIndex={3000}>
+    <Modal opened={open} onClose={onClose} title={t('tags.create.title')} zIndex={3000}>
       <form onSubmit={form.onSubmit(onSubmit)}>
         <Stack gap='sm'>
-          <TextInput label='Name' placeholder='Enter a name...' {...form.getInputProps('name')} />
+          <TextInput
+            label={t('tags.form.name.label')}
+            placeholder={t('tags.form.name.placeholder')}
+            {...form.getInputProps('name')}
+          />
 
           <ColorInput
-            label='Color'
+            label={t('tags.form.color.label')}
             rightSection={
-              <Tooltip label='Choose a color based on the name' zIndex={3001}>
+              <Tooltip label={t('tags.form.color.fromName')} zIndex={3001}>
                 <ActionIcon
                   variant='transparent'
                   color='white'
@@ -121,7 +127,7 @@ export default function CreateTagModal({ open, onClose }: { open: boolean; onClo
           </Group>
 
           <Button type='submit' variant='outline'>
-            Create tag
+            {t('tags.create.submit')}
           </Button>
         </Stack>
       </form>

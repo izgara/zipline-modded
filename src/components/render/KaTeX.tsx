@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 
 import 'katex/dist/katex.min.css';
-import { Alert, Paper } from '@mantine/core';
+import { Alert, Box, Paper } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 
-export default function KaTeX({ tex }: { tex: string }) {
+export default function KaTeX({ tex, unframed }: { tex: string; unframed?: boolean }) {
+  const { t } = useTranslation('file');
   const [html, setHtml] = useState('');
   const [error, setError] = useState<any>(null);
 
@@ -20,15 +22,17 @@ export default function KaTeX({ tex }: { tex: string }) {
 
   if (error) {
     return (
-      <Alert color='red' title='KaTeX error'>
+      <Alert color='red' title={t('render.katexError')}>
         {error.toString()}
       </Alert>
     );
   }
 
+  const Container = unframed ? Box : Paper;
+
   return (
-    <Paper withBorder p='md'>
+    <Container {...(!unframed && { withBorder: true })} p='md'>
       <div dangerouslySetInnerHTML={{ __html: html }} />
-    </Paper>
+    </Container>
   );
 }
