@@ -7,11 +7,12 @@ layer is Drizzle (`src/lib/db/schema.ts` + `relations.ts` + `drizzle/`), not
 Prisma. Do not reintroduce `@/lib/db`'s old `prisma` client; use `db` (the
 Drizzle client) and the relational query builder (`db.query.*`).
 
-Upstream is tracked to **`5fe2792f` (v4.8.2)**, merged as `bfa289aa` (2026-10-26).
+Upstream is tracked to **`614358e0`** (v4.8.2 + per-link Discord previews #1153),
+merged 2026-10-30; v4.8.2 itself was merged as `bfa289aa` (2026-10-26).
 That release brought i18n to the whole web UI (`src/lib/i18n/locales/<lang>/`,
 `useTranslation`, `SafeTrans`): fork UI text added since then should be a
 translation key in `en` (and `tr`) rather than a literal, and the
-oidc_logout / user_quick_links migrations got fork-aware snapshots as
+oidc_logout, user_quick_links and the two discord_previews migrations got fork-aware snapshots as
 described under "Merging upstream migrations". `@fastify/static` 10 hands
 `setHeaders` a FastifyReply (`res.header`, not `res.setHeader`).
 
