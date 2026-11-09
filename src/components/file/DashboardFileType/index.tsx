@@ -3,7 +3,7 @@ import Pdf from '@/components/render/Pdf';
 import Render from '@/components/render/Render';
 import { renderMode } from '@/components/render/renderMode';
 import { useSettingsStore } from '@/lib/client/store/settings';
-import type { File as DbFile } from '@/lib/db/models/file';
+import type { FilePreview } from '@/lib/db/models/file';
 import {
   Box,
   Center,
@@ -82,7 +82,7 @@ export default function DashboardFileType({
   onVideoMetadata,
   onFullscreenBackdropClick,
 }: {
-  file: DbFile | File;
+  file: FilePreview | File;
   show?: boolean;
   token?: string | null;
   code?: boolean;

@@ -119,3 +119,5 @@ export const fileSchema = createSelectSchema(files, {
   });
 
 export type File = z.infer<typeof fileSchema>;
+
+export type FilePreview = Pick<File, 'id' | 'name' | 'type' | 'size' | 'thumbnail' | 'password'>;
