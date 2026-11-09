@@ -7,8 +7,10 @@ layer is Drizzle (`src/lib/db/schema.ts` + `relations.ts` + `drizzle/`), not
 Prisma. Do not reintroduce `@/lib/db`'s old `prisma` client; use `db` (the
 Drizzle client) and the relational query builder (`db.query.*`).
 
-Upstream is tracked to **`614358e0`** (v4.8.2 + per-link Discord previews #1153),
-merged 2026-10-30; v4.8.2 itself was merged as `bfa289aa` (2026-10-26).
+Upstream is tracked to **v4.8.3** (`49b81a29`), merged 2026-11-09 as `af24f59d`; it
+has no new migrations. Its settings page is tabbed, and the fork's
+`SettingsProfile` lives in the Account tab. v4.8.2 itself was merged as `bfa289aa`
+(2026-10-26).
 That release brought i18n to the whole web UI (`src/lib/i18n/locales/<lang>/`,
 `useTranslation`, `SafeTrans`): fork UI text added since then should be a
 translation key in `en` (and `tr`) rather than a literal, and the
