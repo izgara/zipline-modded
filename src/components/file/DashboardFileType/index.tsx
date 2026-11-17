@@ -3,6 +3,7 @@ import Pdf from '@/components/render/Pdf';
 import Render from '@/components/render/Render';
 import { renderMode } from '@/components/render/renderMode';
 import { useSettingsStore } from '@/lib/client/store/settings';
+import { restoreVideoVolume, saveVideoVolume } from '@/lib/client/videoVolume';
 import type { FilePreview } from '@/lib/db/models/file';
 import {
   Box,
@@ -178,6 +179,8 @@ export default function DashboardFileType({
         muted={muted ?? mediaAutoMuted}
         controls
         src={fileUrl}
+        ref={restoreVideoVolume}
+        onVolumeChange={(event) => saveVideoVolume(event.currentTarget)}
         onLoadedMetadata={
           onVideoMetadata
             ? (event) => onVideoMetadata(event.currentTarget.videoWidth, event.currentTarget.videoHeight)
