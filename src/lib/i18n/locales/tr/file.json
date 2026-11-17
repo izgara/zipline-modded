@@ -16,5 +16,10 @@
       "title": "Klasör oluşturuldu",
       "message": "{{name}} ile {{folder}} oluşturuldu"
     }
+  },
+  "details": {
+    "tags": {
+      "noMatch": "Bununla eşleşen etiket yok"
+    }
   }
 }

@@ -9,6 +9,7 @@ import { File } from '@/lib/db/models/file';
 import { Tag } from '@/lib/db/models/tag';
 import { fetchApi } from '@/lib/fetchApi';
 import { buildFolderHierarchy } from '@/lib/folderHierarchy';
+import { tagMatches } from '@/lib/client/tagSearch';
 import {
   ActionIcon,
   ActionIconProps,
@@ -18,7 +19,6 @@ import {
   Combobox,
   Drawer,
   Group,
-  Input,
   InputBase,
   Paper,
   Pill,
@@ -147,7 +147,13 @@ export default function FileViewer({
     user ? `/api/users/${user}/tags` : '/api/user/tags',
   );
 
-  const tagsCombobox = useCombobox();
+  // Fork: the tag box can be typed into, to find a game in a long list.
+  const [tagSearch, setTagSearch] = useState('');
+  const tagsCombobox = useCombobox({ onDropdownClose: () => setTagSearch('') });
+  const shownTags = useMemo(() => tags?.filter((tag) => tagMatches(tag.name, tagSearch)), [tags, tagSearch]);
+  useEffect(() => {
+    if (tagSearch) tagsCombobox.selectFirstOption();
+  }, [tagSearch]);
 
   const fileTags = useMemo(() => file?.tags?.map((tag) => tag.id) ?? [], [file?.tags]);
   const [tagState, setTagState] = useState(() => ({
@@ -172,6 +178,7 @@ export default function FileViewer({
 
   const handleValueSelect = (val: string) => {
     if (!file) return;
+    setTagSearch('');
 
     setTagState((current) => {
       const value = current.fileId === file.id ? current.value : fileTags;
@@ -235,6 +242,7 @@ export default function FileViewer({
 
     mutateFiles();
     mutate('/api/user/tags');
+    mutate('/api/user/files/tag-counts');
   };
 
   const triggerSave = async () => {
@@ -405,15 +413,16 @@ export default function FileViewer({
                         onClick={() => tagsCombobox.openDropdown()}
                       >
                         <Pill.Group>
-                          {values.length > 0 ? (
-                            values
-                          ) : (
-                            <Input.Placeholder>{t('details.tags.placeholder')}</Input.Placeholder>
-                          )}
+                          {values}
 
                           <Combobox.EventsTarget>
                             <PillsInput.Field
-                              type='hidden'
+                              value={tagSearch}
+                              placeholder={values.length > 0 ? undefined : t('details.tags.placeholder')}
+                              onChange={(event) => {
+                                tagsCombobox.openDropdown();
+                                setTagSearch(event.currentTarget.value);
+                              }}
                               onFocus={() => tagsCombobox.openDropdown()}
                               onBlur={() => tagsCombobox.closeDropdown()}
                               onKeyDown={(event) => {
@@ -433,9 +442,9 @@ export default function FileViewer({
                     </Combobox.DropdownTarget>
 
                     <Combobox.Dropdown>
-                      <Combobox.Options>
-                        {tags?.length ? (
-                          tags.map((tag) => (
+                      <Combobox.Options mah={360} style={{ overflowY: 'auto' }}>
+                        {shownTags?.length ? (
+                          shownTags.map((tag) => (
                             <Combobox.Option value={tag.id} key={tag.id} active={value.includes(tag.id)}>
                               <Group gap='sm'>
                                 <Checkbox
@@ -450,7 +459,9 @@ export default function FileViewer({
                             </Combobox.Option>
                           ))
                         ) : (
-                          <Combobox.Empty>{t('details.tags.empty')}</Combobox.Empty>
+                          <Combobox.Empty>
+                            {tagSearch ? t('details.tags.noMatch') : t('details.tags.empty')}
+                          </Combobox.Empty>
                         )}
                       </Combobox.Options>
                     </Combobox.Dropdown>

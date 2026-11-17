@@ -3,13 +3,13 @@ import { db } from '@/lib/db';
 import { fileColumns, filePasswordExtra, fileRelations, fileSchema, formatFiles } from '@/lib/db/models/file';
 import { getFolderWithOwner } from '@/lib/db/models/folder';
 import { getUserIdentity } from '@/lib/db/models/user';
-import { files, incompleteFiles, tags } from '@/lib/db/schema';
+import { files, filesToTags, incompleteFiles, tags } from '@/lib/db/schema';
 import { containsText } from '@/lib/db/utils';
 import { canInteract, canManage } from '@/lib/role';
 import { paginationQs } from '@/lib/validation';
 import { userMiddleware } from '@/server/middleware/user';
 import typedPlugin from '@/server/typedPlugin';
-import { and, eq, inArray, like, ne, notInArray, or, sql } from 'drizzle-orm';
+import { and, eq, exists, inArray, like, ne, notInArray, or, sql } from 'drizzle-orm';
 import z from 'zod';
 
 const searchFieldSchema = z.enum(['name', 'originalName', 'type', 'tags', 'id']);
@@ -81,11 +81,10 @@ export default typedPlugin(
 
           if (!tagIds.length) return res.send({ page: [], search: { field: searchField, query: tagIds } });
 
-          const ownedTagCount = await db.$count(
-            tags,
-            and(eq(tags.userId, user.id), inArray(tags.id, tagIds)),
-          );
-          if (ownedTagCount !== tagIds.length) throw new ApiError(1032);
+          // Fork: tags are shared by everyone, so a tag only has to exist, not belong to
+          // this user. The files themselves are still limited to the user below.
+          const tagCount = await db.$count(tags, inArray(tags.id, tagIds));
+          if (tagCount !== tagIds.length) throw new ApiError(1032);
         }
 
         const fileFilter = (file: typeof files) =>
@@ -118,6 +117,31 @@ export default typedPlugin(
           with: fileRelations,
         });
         const filePage = formatFiles(fileRows);
+
+        if (searchQuery && searchField === 'tags') {
+          // Fork: a tag filter is paged like the plain list, so it reports its total too.
+          const total = await db.$count(
+            files,
+            and(
+              fileFilter(files),
+              ...tagIds.map((id) =>
+                exists(
+                  db
+                    .select({ one: sql`1` })
+                    .from(filesToTags)
+                    .where(and(eq(filesToTags.fileId, files.id), eq(filesToTags.tagId, id))),
+                ),
+              ),
+            ),
+          );
+
+          return res.send({
+            page: filePage,
+            search: { field: searchField, query: tagIds },
+            total,
+            pages: Math.ceil(total / perpage),
+          });
+        }
 
         if (searchQuery)
           return res.send({

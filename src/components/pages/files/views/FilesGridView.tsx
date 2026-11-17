@@ -19,6 +19,7 @@ import { lazy, Suspense, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useShallow } from 'zustand/shallow';
+import TagFilterBar from '../tags/TagFilterBar';
 import { useApiPagination } from '../useApiPagination';
 
 const DashboardFileModal = lazy(() => import('@/components/file/DashboardFile/DashboardFileModal'));
@@ -29,12 +30,17 @@ export default function Files({ id, folderId }: { id?: string; folderId?: string
   const { t } = useTranslation('files');
   const [page, setPage] = useQueryState('page', parseAsInteger.withDefault(1));
   const [perpage, setPerpage] = useQueryState('perpage', parseAsInteger.withDefault(15));
+  // Fork: the tag bar, only on the user's own files page (not a folder or another user's).
+  const withTagBar = !id && !folderId;
+  const [tag, setTag] = useQueryState('tag');
+  const activeTag = withTagBar ? tag : null;
 
   const { data, isLoading } = useApiPagination({
     page,
     perpage,
     id,
     folderId,
+    search: activeTag ? { field: 'tags', query: activeTag } : undefined,
   });
 
   const from = (page - 1) * perpage + 1;
@@ -63,6 +69,16 @@ export default function Files({ id, folderId }: { id?: string; folderId?: string
         user={id}
         sequenced
       />
+
+      {withTagBar && (
+        <TagFilterBar
+          value={activeTag}
+          onChange={(next) => {
+            setTag(next);
+            setPage(1);
+          }}
+        />
+      )}
 
       <SimpleGrid
         my='sm'

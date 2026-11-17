@@ -16,6 +16,7 @@ import { useSettingsStore } from '@/lib/client/store/settings';
 import { type File } from '@/lib/db/models/file';
 import { Tag } from '@/lib/db/models/tag';
 import { buildFolderHierarchy } from '@/lib/folderHierarchy';
+import { tagMatches } from '@/lib/client/tagSearch';
 import { formatRootUrl } from '@/lib/url';
 import {
   ActionIcon,
@@ -26,7 +27,6 @@ import {
   Combobox,
   Flex,
   Group,
-  Input,
   InputBase,
   Paper,
   Pill,
@@ -129,11 +129,18 @@ function TagsFilter({
   setSearchQuery: (...args: any) => void;
 }) {
   const { t } = useTranslation('files');
-  const combobox = useCombobox();
+  // Fork: typing filters the list, and the box starts empty rather than holding one blank id.
+  const [search, setSearch] = useState('');
+  const combobox = useCombobox({ onDropdownClose: () => setSearch('') });
   const { data: tags } = useSWR<Extract<Response['/api/user/tags'], Tag[]>>('/api/user/tags');
+  const shownTags = useMemo(() => tags?.filter((tag) => tagMatches(tag.name, search)), [tags, search]);
+  useEffect(() => {
+    if (search) combobox.selectFirstOption();
+  }, [search]);
 
-  const [value, setValue] = useState(() => searchQuery.tags.split(','));
+  const [value, setValue] = useState(() => searchQuery.tags.split(',').filter(Boolean));
   const handleValueSelect = (val: string) => {
+    setSearch('');
     setValue((current) => (current.includes(val) ? current.filter((v) => v !== val) : [...current, val]));
   };
 
@@ -155,16 +162,21 @@ function TagsFilter({
   return (
     <Combobox store={combobox} onOptionSubmit={handleValueSelect} withinPortal={false}>
       <Combobox.DropdownTarget>
-        <PillsInput onBlur={() => triggerSave()} pointer onClick={() => combobox.toggleDropdown()} w={200}>
+        <PillsInput onBlur={() => triggerSave()} pointer onClick={() => combobox.openDropdown()} w={240}>
           <Pill.Group>
-            {values.length > 0 ? values : <Input.Placeholder>{t('table.tagsPlaceholder')}</Input.Placeholder>}
+            {values}
 
             <Combobox.EventsTarget>
               <PillsInput.Field
-                type='hidden'
+                value={search}
+                placeholder={values.length > 0 ? undefined : t('table.tagsPlaceholder')}
+                onChange={(event) => {
+                  combobox.openDropdown();
+                  setSearch(event.currentTarget.value);
+                }}
                 onBlur={() => combobox.closeDropdown()}
                 onKeyDown={(event) => {
-                  if (event.key === 'Backspace') {
+                  if (event.key === 'Backspace' && value.length > 0 && event.currentTarget.value === '') {
                     event.preventDefault();
                     handleValueRemove(value[value.length - 1]);
                   }
@@ -176,8 +188,9 @@ function TagsFilter({
       </Combobox.DropdownTarget>
 
       <Combobox.Dropdown>
-        <Combobox.Options>
-          {tags?.map((tag) => (
+        <Combobox.Options mah={360} style={{ overflowY: 'auto' }}>
+          {!shownTags?.length && <Combobox.Empty>{t('table.tagsNoMatch')}</Combobox.Empty>}
+          {shownTags?.map((tag) => (
             <Combobox.Option value={tag.id} key={tag.id} active={value.includes(tag.id)}>
               <Group gap='sm'>
                 <Checkbox

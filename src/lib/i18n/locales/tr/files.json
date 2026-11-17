@@ -19,5 +19,13 @@
     "createdAt": "Oluşturulma tarihi",
     "favorite": "Favori",
     "showOnProfile": "Profilde"
+  },
+  "views": {
+    "allTags": "Tümü",
+    "moreTags": "+{{count}} tane daha",
+    "fewerTags": "Daha az göster"
+  },
+  "table": {
+    "tagsNoMatch": "Bununla eşleşen etiket yok"
   }
 }

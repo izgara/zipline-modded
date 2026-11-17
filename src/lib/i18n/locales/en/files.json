@@ -140,7 +140,10 @@
     "favoriteFiles": "Favorite Files",
     "noFiles": "No files found",
     "uploadFile": "Upload a file",
-    "pagination": "{{from}} - {{to}} / {{total}} files"
+    "pagination": "{{from}} - {{to}} / {{total}} files",
+    "allTags": "All",
+    "moreTags": "+{{count}} more",
+    "fewerTags": "Show fewer"
   },
   "table": {
     "columns": {
@@ -181,6 +184,7 @@
       "copy": "Copy file link to clipboard",
       "download": "Download file",
       "delete": "Delete file"
-    }
+    },
+    "tagsNoMatch": "No tag matches that"
   }
 }

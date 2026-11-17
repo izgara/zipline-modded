@@ -102,7 +102,8 @@
     "tags": {
       "title": "Tags",
       "placeholder": "Pick one or more tags",
-      "empty": "No tags found, create one outside of this menu."
+      "empty": "No tags found, create one outside of this menu.",
+      "noMatch": "No tag matches that"
     },
     "folder": {
       "title": "Folder",
