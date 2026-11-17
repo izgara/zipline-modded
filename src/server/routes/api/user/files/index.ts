@@ -9,7 +9,7 @@ import { canInteract, canManage } from '@/lib/role';
 import { paginationQs } from '@/lib/validation';
 import { userMiddleware } from '@/server/middleware/user';
 import typedPlugin from '@/server/typedPlugin';
-import { and, eq, exists, inArray, like, ne, notInArray, or, sql } from 'drizzle-orm';
+import { and, eq, exists, inArray, like, ne, notExists, notInArray, or, sql } from 'drizzle-orm';
 import z from 'zod';
 
 const searchFieldSchema = z.enum(['name', 'originalName', 'type', 'tags', 'id']);
@@ -24,6 +24,8 @@ const responseSchema = z.object({
   total: z.number().optional(),
   pages: z.number().optional(),
 });
+
+export const UNTAGGED = 'untagged';
 
 export type FileSearchField = z.infer<typeof searchFieldSchema>;
 export type ApiUserFilesResponse = z.infer<typeof responseSchema>;
@@ -72,8 +74,10 @@ export default typedPlugin(
           .from(incompleteFiles)
           .where(and(eq(incompleteFiles.userId, user.id), ne(incompleteFiles.status, 'COMPLETE')));
 
+        // Fork: "untagged" in place of tag ids lists the files with no tag at all.
+        const untagged = searchField === 'tags' && searchQuery?.trim() === UNTAGGED;
         let tagIds: string[] = [];
-        if (searchQuery && searchField === 'tags') {
+        if (searchQuery && searchField === 'tags' && !untagged) {
           tagIds = searchQuery
             .split(',')
             .map((tag) => tag.trim())
@@ -102,6 +106,14 @@ export default typedPlugin(
             folderId ? eq(file.folderId, folderId) : undefined,
             notInArray(file.id, incompleteIds),
             searchQuery && searchField !== 'tags' ? containsText(file[searchField], searchQuery) : undefined,
+            untagged
+              ? notExists(
+                  db
+                    .select({ one: sql`1` })
+                    .from(filesToTags)
+                    .where(eq(filesToTags.fileId, file.id)),
+                )
+              : undefined,
           )!;
 
         const fileRows = await db.query.files.findMany({
@@ -137,7 +149,7 @@ export default typedPlugin(
 
           return res.send({
             page: filePage,
-            search: { field: searchField, query: tagIds },
+            search: { field: searchField, query: untagged ? [UNTAGGED] : tagIds },
             total,
             pages: Math.ceil(total / perpage),
           });

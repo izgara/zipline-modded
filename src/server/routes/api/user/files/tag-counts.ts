@@ -2,7 +2,7 @@ import { db } from '@/lib/db';
 import { files, filesToTags } from '@/lib/db/schema';
 import { userMiddleware } from '@/server/middleware/user';
 import typedPlugin from '@/server/typedPlugin';
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq, notExists, sql } from 'drizzle-orm';
 import z from 'zod';
 
 // Fork: tags are shared by everyone, so the tag list alone cannot say which tags this
@@ -16,7 +16,8 @@ export default typedPlugin(
       PATH,
       {
         schema: {
-          description: 'How many of the authenticated user’s files carry each tag, keyed by tag id.',
+          description:
+            'How many of the authenticated user’s files carry each tag, keyed by tag id, plus `untagged`: how many carry none.',
           response: {
             200: z.record(z.string(), z.number()),
           },
@@ -32,7 +33,20 @@ export default typedPlugin(
           .where(eq(files.userId, req.user.id))
           .groupBy(filesToTags.tagId);
 
-        return res.send(Object.fromEntries(rows.map((row) => [row.tagId, row.files])));
+        const untagged = await db.$count(
+          files,
+          and(
+            eq(files.userId, req.user.id),
+            notExists(
+              db
+                .select({ one: sql`1` })
+                .from(filesToTags)
+                .where(eq(filesToTags.fileId, files.id)),
+            ),
+          ),
+        );
+
+        return res.send({ ...Object.fromEntries(rows.map((row) => [row.tagId, row.files])), untagged });
       },
     );
   },

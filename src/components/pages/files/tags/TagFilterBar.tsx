@@ -8,6 +8,8 @@ import useSWR from 'swr';
 // Fork: a row of the games/tags on the user's own files, most used first. One click
 // shows only that tag's files; the open file's arrows then step through just those.
 const SHOWN_AT_FIRST = 12;
+// Same value the files API takes in place of tag ids.
+const UNTAGGED = 'untagged';
 
 function TagButton({
   tag,
@@ -66,7 +68,8 @@ export default function TagFilterBar({
   const used = tags
     .filter((tag) => (counts[tag.id] ?? 0) > 0 || tag.id === value)
     .sort((a, b) => (counts[b.id] ?? 0) - (counts[a.id] ?? 0) || a.name.localeCompare(b.name));
-  if (used.length === 0) return null;
+  const untagged = counts[UNTAGGED] ?? 0;
+  if (used.length === 0 && untagged === 0 && value !== UNTAGGED) return null;
 
   let shown = expanded ? used : used.slice(0, SHOWN_AT_FIRST);
   const selected = used.find((tag) => tag.id === value);
@@ -82,6 +85,15 @@ export default function TagFilterBar({
       >
         {t('views.allTags')}
       </Button>
+
+      {(untagged > 0 || value === UNTAGGED) && (
+        <TagButton
+          tag={{ id: UNTAGGED, name: t('views.untagged'), color: '#868e96' }}
+          count={untagged}
+          selected={value === UNTAGGED}
+          onClick={() => onChange(value === UNTAGGED ? null : UNTAGGED)}
+        />
+      )}
 
       {shown.map((tag) => (
         <TagButton

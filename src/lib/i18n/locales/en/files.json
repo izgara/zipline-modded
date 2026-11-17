@@ -142,6 +142,7 @@
     "uploadFile": "Upload a file",
     "pagination": "{{from}} - {{to}} / {{total}} files",
     "allTags": "All",
+    "untagged": "Untagged",
     "moreTags": "+{{count}} more",
     "fewerTags": "Show fewer"
   },
