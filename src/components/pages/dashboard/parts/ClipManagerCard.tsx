@@ -78,7 +78,7 @@ function Notes({ notes, title }: { notes?: string[]; title: React.ReactNode }) {
           />
         </Group>
       </UnstyledButton>
-      <Collapse in={open}>
+      <Collapse expanded={open}>
         <List size='sm' spacing={2} c='dimmed'>
           {notes.map((note, i) => (
             <List.Item key={i}>{note}</List.Item>
