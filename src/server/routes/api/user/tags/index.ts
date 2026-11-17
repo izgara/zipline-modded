@@ -1,6 +1,6 @@
 import { ApiError } from '@/lib/api/errors';
 import { db } from '@/lib/db';
-import { cleanTag, cleanTags, Tag, tagColumns, tagSchema } from '@/lib/db/models/tag';
+import { cleanTag, cleanTags, ownTag, Tag, tagSchema } from '@/lib/db/models/tag';
 import { tags } from '@/lib/db/schema';
 import { log } from '@/lib/logger';
 import { secondlyRatelimit } from '@/lib/ratelimits';
@@ -29,12 +29,12 @@ export default typedPlugin(
         preHandler: [userMiddleware],
       },
       async (req, res) => {
+        // fork: only the asker's own clips, so nobody learns other people's clip ids
         const tagList = await db.query.tags.findMany({
-          columns: tagColumns,
-          with: { files: { columns: { id: true } } },
+          with: { files: { columns: { id: true }, where: { userId: req.user.id } } },
         });
 
-        return res.send(cleanTags(tagList as Tag[]));
+        return res.send(cleanTags(tagList.map((tag) => ownTag(tag, req.user.id))));
       },
     );
 
@@ -78,7 +78,7 @@ export default typedPlugin(
             icon: tags.icon,
           });
         if (!row) throw new ApiError(1033);
-        const tag = { ...row, files: [] as { id: string }[] } as Tag;
+        const tag = { ...row, files: [] as { id: string }[], mine: true } as Tag;
 
         logger.info('tag created', {
           id: tag.id,

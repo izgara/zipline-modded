@@ -1,7 +1,9 @@
 import { mutateFiles } from '@/components/file/actions';
 import { Response } from '@/lib/api/response';
 import { Tag } from '@/lib/db/models/tag';
+import { useUserStore } from '@/lib/client/store/user';
 import { fetchApi } from '@/lib/fetchApi';
+import { isAdministrator } from '@/lib/role';
 import { ActionIcon, Group, Modal, Paper, Stack, Text, Title, Tooltip } from '@mantine/core';
 import { showNotification } from '@mantine/notifications';
 import { IconPencil, IconPlus, IconTagOff, IconTrashFilled } from '@tabler/icons-react';
@@ -23,6 +25,7 @@ export default function TagsModals({
   const { t } = useTranslation(['files', 'common']);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
+  const admin = useUserStore((state) => isAdministrator(state.user?.role));
 
   const { data: tags, mutate } = useSWR<Extract<Tag[], Response['/api/user/tags']>>('/api/user/tags');
 
@@ -80,17 +83,21 @@ export default function TagsModals({
                 </Group>
 
                 <Group>
-                  <Tooltip label={t('tags.edit')}>
-                    <ActionIcon variant='outline' onClick={() => setSelectedTag(tag)}>
-                      <IconPencil size='1rem' />
-                    </ActionIcon>
-                  </Tooltip>
+                  {(tag.mine || admin) && (
+                    <Tooltip label={t('tags.edit')}>
+                      <ActionIcon variant='outline' onClick={() => setSelectedTag(tag)}>
+                        <IconPencil size='1rem' />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
 
-                  <Tooltip label={t('tags.delete')}>
-                    <ActionIcon variant='outline' color='red' onClick={() => handleDelete(tag)}>
-                      <IconTrashFilled size='1rem' />
-                    </ActionIcon>
-                  </Tooltip>
+                  {admin && (
+                    <Tooltip label={t('tags.delete')}>
+                      <ActionIcon variant='outline' color='red' onClick={() => handleDelete(tag)}>
+                        <IconTrashFilled size='1rem' />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
                 </Group>
               </Group>
             ))}

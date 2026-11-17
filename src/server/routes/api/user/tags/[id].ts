@@ -1,10 +1,12 @@
 import { ApiError } from '@/lib/api/errors';
 import { db } from '@/lib/db';
-import { cleanTag, Tag, tagColumns, tagSchema } from '@/lib/db/models/tag';
+import { cleanTag, ownTag, Tag, tagSchema } from '@/lib/db/models/tag';
 import { tags } from '@/lib/db/schema';
 import { isPostgresError } from '@/lib/db/utils';
 import { log } from '@/lib/logger';
 import { zStringTrimmed } from '@/lib/validation';
+import { isAdministrator } from '@/lib/role';
+import { administratorMiddleware } from '@/server/middleware/administrator';
 import { userMiddleware } from '@/server/middleware/user';
 import typedPlugin from '@/server/typedPlugin';
 import { eq } from 'drizzle-orm';
@@ -38,13 +40,12 @@ export default typedPlugin(
         const { id } = req.params;
 
         const tag = await db.query.tags.findFirst({
-          columns: tagColumns,
           where: { id },
-          with: { files: { columns: { id: true } } },
+          with: { files: { columns: { id: true }, where: { userId: req.user.id } } },
         });
         if (!tag) throw new ApiError(9002);
 
-        return res.send(cleanTag(tag as Tag));
+        return res.send(cleanTag(ownTag(tag, req.user.id)));
       },
     );
 
@@ -61,7 +62,7 @@ export default typedPlugin(
           },
           tags: ['auth'],
         },
-        preHandler: [userMiddleware],
+        preHandler: [userMiddleware, administratorMiddleware],
       },
       async (req, res) => {
         const { id } = req.params;
@@ -103,19 +104,21 @@ export default typedPlugin(
         const { id } = req.params;
         const { name, color, icon } = req.body;
 
-        const existingTag = await db.query.tags.findFirst({
-          columns: tagColumns,
+        const found = await db.query.tags.findFirst({
           where: { id },
-          with: { files: { columns: { id: true } } },
+          with: { files: { columns: { id: true }, where: { userId: req.user.id } } },
         });
-        if (!existingTag) throw new ApiError(9002);
+        if (!found) throw new ApiError(9002);
+        // fork: tags are shared, so only whoever made one (or an admin) may change it
+        if (found.userId !== req.user.id && !isAdministrator(req.user.role)) throw new ApiError(3020);
+        const existingTag = ownTag(found, req.user.id);
 
         const changes = {
           ...(name && { name }),
           ...(color && { color }),
           ...(icon !== undefined && { icon: icon || null }),
         };
-        let tag = existingTag as Tag;
+        let tag = existingTag;
         if (Object.keys(changes).length) {
           try {
             const [updated] = await db
@@ -131,7 +134,7 @@ export default typedPlugin(
                 icon: tags.icon,
               });
             if (!updated) throw new ApiError(9002);
-            tag = { ...updated, files: existingTag.files } as Tag;
+            tag = { ...updated, files: existingTag.files, mine: existingTag.mine } as Tag;
           } catch (error) {
             if (isPostgresError(error, '23505')) throw new ApiError(1034);
             throw error;

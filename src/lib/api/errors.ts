@@ -99,6 +99,7 @@ export const API_ERRORS = {
   3017: 'OAuth login is not allowed for this account',
   3018: 'Invalid access token provided.',
   3019: 'You cannot modify this user',
+  3020: "Only the tag's creator or an admin can change this tag",
 
   // 4xxx, not founds
   4000: 'File not found',

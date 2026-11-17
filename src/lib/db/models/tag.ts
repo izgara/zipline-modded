@@ -12,9 +12,18 @@ export const tagSchema = createSelectSchema(tags)
     // icon is stored as a data URI but cleaned down to a boolean before leaving the API
     icon: z.union([z.string(), z.boolean()]).nullish(),
     files: z.array(tagFileSchema).optional(),
+    // fork: whether the user asking created the tag (they may edit it; only admins delete)
+    mine: z.boolean().optional(),
   });
 
 export type Tag = z.infer<typeof tagSchema>;
+
+/** The tag as `userId` sees it: whether they made it, without the maker's id. */
+export function ownTag<T extends { userId?: string | null }>(tag: T, userId: string): Tag {
+  const { userId: owner, ...rest } = tag;
+
+  return { ...rest, mine: owner === userId } as unknown as Tag;
+}
 
 export function cleanTag(tag: Tag) {
   tag.icon = !!tag.icon;
