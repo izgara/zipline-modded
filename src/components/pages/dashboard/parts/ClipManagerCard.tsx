@@ -1,6 +1,18 @@
 import { bytes } from '@/lib/bytes';
-import { Anchor, Button, Divider, Group, List, Paper, Stack, Text, Title } from '@mantine/core';
-import { IconBrandWindows, IconDownload } from '@tabler/icons-react';
+import {
+  Anchor,
+  Button,
+  Collapse,
+  Divider,
+  Group,
+  List,
+  Paper,
+  Stack,
+  Text,
+  Title,
+  UnstyledButton,
+} from '@mantine/core';
+import { IconBrandWindows, IconChevronDown, IconDownload } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 
 type Build = { file: string; size?: number };
@@ -44,15 +56,36 @@ function Packages({ release, withSetup }: { release: Release | null; withSetup: 
   );
 }
 
-function Notes({ notes }: { notes?: string[] }) {
+// Closed by default: the list grows with every release, and most people only
+// want the download button. A click on the heading opens it.
+function Notes({ notes, title }: { notes?: string[]; title: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
   if (!notes?.length) return null;
 
   return (
-    <List size='sm' spacing={2} c='dimmed'>
-      {notes.map((note, i) => (
-        <List.Item key={i}>{note}</List.Item>
-      ))}
-    </List>
+    <Stack gap={4}>
+      <UnstyledButton onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <Group gap={6} wrap='nowrap'>
+          <Text size='sm' fw={600}>
+            {title}
+          </Text>
+          <Text size='xs' c='dimmed'>
+            {notes.length} {notes.length === 1 ? 'change' : 'changes'}
+          </Text>
+          <IconChevronDown
+            size='1rem'
+            style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}
+          />
+        </Group>
+      </UnstyledButton>
+      <Collapse in={open}>
+        <List size='sm' spacing={2} c='dimmed'>
+          {notes.map((note, i) => (
+            <List.Item key={i}>{note}</List.Item>
+          ))}
+        </List>
+      </Collapse>
+    </Stack>
   );
 }
 
@@ -114,10 +147,7 @@ export default function ClipManagerCard() {
 
       {latest?.notes?.length ? (
         <Stack gap={4} mt='sm'>
-          <Text size='sm' fw={600}>
-            What&apos;s new in v{latest.version}
-          </Text>
-          <Notes notes={latest.notes} />
+          <Notes notes={latest.notes} title={<>What&apos;s new in v{latest.version}</>} />
         </Stack>
       ) : null}
 
@@ -130,7 +160,7 @@ export default function ClipManagerCard() {
             </Text>
             <Packages release={release} withSetup />
           </Group>
-          <Notes notes={release.notes} />
+          <Notes notes={release.notes} title='Changes' />
         </Stack>
       ))}
     </Paper>
